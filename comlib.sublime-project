@@ -1,0 +1,39 @@
+{
+	"folders":
+	[
+		{
+			"file_include_patterns":
+			[
+				".gitignore",
+				"CMakeLists.txt",
+				"README.md",
+			],
+			"folder_exclude_patterns":
+			[
+				"**/**"
+			],
+			"path": ".",
+			"name": "."
+		},
+		{
+			"path": "core"
+		},
+		{
+			"path": "console"
+		},
+		{
+			"path": "shared"
+		},
+		{
+			"path": "third_party"
+		}
+	],
+	"settings":
+	{
+		"tab_size": 4,
+		"default_encoding": "UTF-8",
+		"default_line_ending": "unix",
+		"ensure_newline_at_eof_on_save": true,
+		"trim_trailing_white_space_on_save": true
+	}
+}

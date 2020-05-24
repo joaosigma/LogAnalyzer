@@ -1,0 +1,57 @@
+#ifndef LA_COMMANDS_REPO_HPP
+#define LA_COMMANDS_REPO_HPP
+
+#include "flavors_repo.hpp"
+
+#include <string>
+#include <functional>
+#include <string_view>
+
+#include <nlohmann/json_fwd.hpp>
+
+namespace la
+{
+	class LinesTools;
+
+	class CommandsRepo
+	{
+	public:
+		struct IResultCtx
+		{
+			virtual nlohmann::json& json() noexcept = 0;
+
+			size_t addLineIndices(const std::vector<size_t>& indices)
+			{
+				return addLineIndices({}, indices);
+			};
+
+			virtual size_t addLineIndices(std::string_view name, const std::vector<size_t>& indices) = 0;
+		};
+
+		struct CommandInfo
+		{
+			std::string name;
+			std::string help;
+			std::string paramsHelp;
+
+			std::function<void(IResultCtx& resultCtx, const LinesTools& linesTools, std::string_view params)> executionCb;
+		};
+
+		struct IRegisterCtx
+		{
+			virtual FlavorsRepo::Type flavor() noexcept = 0;
+			virtual void registerCommand(CommandInfo cmd) = 0;
+		};
+
+		struct Registry
+		{
+			std::string_view tag;
+			std::function<void(IRegisterCtx& registerCtx)> registerCommandsCb;
+		};
+
+	public:
+		static size_t iterateCommands(FlavorsRepo::Type flavor, const std::function<void(std::string_view tag, CommandsRepo::CommandInfo cmd)>& iterateCb);
+	};
+}
+
+#endif
