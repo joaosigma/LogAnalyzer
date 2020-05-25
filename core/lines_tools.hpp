@@ -50,7 +50,7 @@ namespace la
 		class FilterParam<TFilterType, std::string_view, TFilterValueMatchType>
 		{
 			static_assert((TFilterType == FilterType::ThreadName) || (TFilterType == FilterType::Tag) || (TFilterType == FilterType::Method) || (TFilterType == FilterType::Msg));
-			static_assert((TFilterValueMatchType == LogLine::MatchType::Exact) || (TFilterValueMatchType == LogLine::MatchType::StartsWith) || (TFilterValueMatchType == LogLine::MatchType::Contains));
+			static_assert((TFilterValueMatchType == LogLine::MatchType::Exact) || (TFilterValueMatchType == LogLine::MatchType::StartsWith) || (TFilterValueMatchType == LogLine::MatchType::EndsWith) || (TFilterValueMatchType == LogLine::MatchType::Contains));
 
 		public:
 			constexpr FilterParam(std::string_view value) noexcept
@@ -96,6 +96,16 @@ namespace la
 		struct LineIndexRange
 		{
 			size_t start{ 0 }, end{ 0 };
+
+			constexpr bool empty() const noexcept
+			{
+				return (start >= end);
+			}
+
+			constexpr size_t numLines() const noexcept
+			{
+				return ((start < end) ? (end - start) : 0);
+			}
 		};
 
 		struct SearchResult
