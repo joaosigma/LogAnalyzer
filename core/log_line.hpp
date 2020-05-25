@@ -12,7 +12,7 @@ namespace la
 
 	struct LogLine
 	{
-		enum class MatchType : uint8_t { Exact, StartsWith, Contains };
+		enum class MatchType : uint8_t { Exact, StartsWith, EndsWith, Contains };
 
 		LogLevel level;
 		int32_t threadId;
@@ -83,6 +83,8 @@ namespace la
 				return (curName == name);
 			else if constexpr (TMatchType == MatchType::StartsWith)
 				return ((curName.size() >= name.size()) && (curName.compare(0, name.size(), name) == 0));
+			else if constexpr (TMatchType == MatchType::EndsWith)
+				return ((name.size() > curName.size()) ? false : (curName.compare(curName.length() - name.length(), name.length(), name) == 0));
 			else if constexpr (TMatchType == MatchType::Contains)
 				return (curName.find(name) != std::string_view::npos);
 			else
@@ -98,6 +100,8 @@ namespace la
 				return (curTag == tag);
 			else if constexpr (TMatchType == MatchType::StartsWith)
 				return ((curTag.size() >= tag.size()) && (curTag.compare(0, tag.size(), tag) == 0));
+			else if constexpr (TMatchType == MatchType::EndsWith)
+				return ((tag.size() > curTag.size()) ? false : (curTag.compare(curTag.length() - tag.length(), tag.length(), tag) == 0));
 			else if constexpr (TMatchType == MatchType::Contains)
 				return (curTag.find(tag) != std::string_view::npos);
 			else
@@ -113,6 +117,8 @@ namespace la
 				return (curMethod == method);
 			else if constexpr (TMatchType == MatchType::StartsWith)
 				return ((curMethod.size() >= method.size()) && (curMethod.compare(0, method.size(), method) == 0));
+			else if constexpr (TMatchType == MatchType::EndsWith)
+				return ((method.size() > curMethod.size()) ? false : (curMethod.compare(curMethod.length() - method.length(), method.length(), method) == 0));
 			else if constexpr (TMatchType == MatchType::Contains)
 				return (curMethod.find(method) != std::string_view::npos);
 			else
@@ -128,6 +134,8 @@ namespace la
 				return (curMsg == msg);
 			else if constexpr (TMatchType == MatchType::StartsWith)
 				return ((curMsg.size() >= msg.size()) && (curMsg.compare(0, msg.size(), msg) == 0));
+			else if constexpr (TMatchType == MatchType::EndsWith)
+				return ((msg.size() > curMsg.size()) ? false : (curMsg.compare(curMsg.length() - msg.length(), msg.length(), msg) == 0));
 			else if constexpr (TMatchType == MatchType::Contains)
 				return (curMsg.find(msg) != std::string_view::npos);
 			else

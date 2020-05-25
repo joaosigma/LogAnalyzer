@@ -78,18 +78,39 @@ namespace la
             return true;
         }
 
-        std::regex filterType{ R"(; type=(\d+);)", std::regex::ECMAScript | std::regex::optimize };
-        std::regex filterState{ R"(; state=(\d+);)", std::regex::ECMAScript | std::regex::optimize };
+        std::regex RegXFilterType{ R"(; type=(\d+);)", std::regex::ECMAScript | std::regex::optimize | std::regex::icase };
+        std::regex RegXFilterState{ R"(; state=(\d+);)", std::regex::ECMAScript | std::regex::optimize | std::regex::icase };
 
         bool translateMessageState(LogLine line, TranslatorsRepo::TranslationCtx& translationCtx)
         {
-            auto validLine = line.checkSectionTag<LogLine::MatchType::Exact>("COMLib.Sync.CMSProducer") && line.checkSectionMsg<LogLine::MatchType::Exact>("message state updated");
-            validLine = validLine || (line.checkSectionTag<LogLine::MatchType::Exact>("COMLib.GroupChatController") && line.checkSectionMsg<LogLine::MatchType::Exact>("Chat message updated"));
-            validLine = validLine || (line.checkSectionTag<LogLine::MatchType::Exact>("COMLib.FileTransferController.HTTPFileTransfer") && line.checkSectionMethod<LogLine::MatchType::Contains>("onChatMessageSynced") && line.checkSectionMsg<LogLine::MatchType::Exact>(""));
+            auto validLine = line.checkSectionTag<LogLine::MatchType::Exact>("COMLib.ChatController") && (
+                (line.checkSectionMethod<LogLine::MatchType::EndsWith>("storeMessage") && (line.checkSectionMsg<LogLine::MatchType::Exact>("Storing message") || line.checkSectionMsg<LogLine::MatchType::Exact>("Message Stored"))) ||
+                (line.checkSectionMethod<LogLine::MatchType::EndsWith>("onMessageHandled") && line.checkSectionMsg<LogLine::MatchType::Exact>("Message Handled")) ||
+                (line.checkSectionMethod<LogLine::MatchType::EndsWith>("onUpdateMessageData") && line.checkSectionMsg<LogLine::MatchType::Exact>("Message state updated")) ||
+                (line.checkSectionMethod<LogLine::MatchType::EndsWith>("onUpdateMessageState") && line.checkSectionMsg<LogLine::MatchType::Exact>("Message state updated")) ||
+                (line.checkSectionMethod<LogLine::MatchType::EndsWith>("onSendPendingMessagesCompleted") && line.checkSectionMsg<LogLine::MatchType::Exact>("Send pending messages completed")) ||
+                (line.checkSectionMethod<LogLine::MatchType::EndsWith>("onNotificationResponse") && line.checkSectionMsg<LogLine::MatchType::Exact>("Message Notification Response")));
+            validLine = validLine || line.checkSectionTag<LogLine::MatchType::Exact>("COMLib.Sync.CMSProducer") && line.checkSectionMethod<LogLine::MatchType::EndsWith>("processNewIMDN") && (
+                line.checkSectionMsg<LogLine::MatchType::Exact>("message notified") || line.checkSectionMsg<LogLine::MatchType::Exact>("message state updated") || line.checkSectionMsg<LogLine::MatchType::Exact>("sending notification"));
+            validLine = validLine || (line.checkSectionTag<LogLine::MatchType::Exact>("COMLib.GroupChatController") && line.checkSectionMethod<LogLine::MatchType::EndsWith>("onGroupChatMessageUpdated") && line.checkSectionMsg<LogLine::MatchType::Exact>("Chat message updated"));
+            validLine = validLine || (line.checkSectionTag<LogLine::MatchType::Exact>("COMLib.FileTransferController.HTTPFileTransfer") && line.checkSectionMethod<LogLine::MatchType::EndsWith>("onChatMessageSynced") && line.checkSectionMsg<LogLine::MatchType::Exact>(""));
+            validLine = validLine || (line.checkSectionTag<LogLine::MatchType::Exact>("COMLib.ChatController.SMSoIP") && (
+                (line.checkSectionMethod<LogLine::MatchType::EndsWith>("sendNotification") && line.checkSectionMsg<LogLine::MatchType::Exact>("sending notification")) ||
+                (line.checkSectionMethod<LogLine::MatchType::EndsWith>("handleIncomingNotification") && line.checkSectionMsg<LogLine::MatchType::Exact>("Incoming notification"))));
+            validLine = validLine || (line.checkSectionTag<LogLine::MatchType::Exact>("COMLib.ChatController.SMS") && line.checkSectionMethod<LogLine::MatchType::EndsWith>("sendNotification") && line.checkSectionMsg<LogLine::MatchType::Exact>("Sending message"));
+            validLine = validLine || (line.checkSectionTag<LogLine::MatchType::Exact>("COMLib.ChatController.RCS") && line.checkSectionMethod<LogLine::MatchType::EndsWith>("onMessageState") && line.checkSectionMsg<LogLine::MatchType::Exact>("onMessageState"));
+            validLine = validLine || (line.checkSectionTag<LogLine::MatchType::Exact>("COMLib.ChatController.OMASIMPLEIM") && line.checkSectionMethod<LogLine::MatchType::EndsWith>("sendNotification") && line.checkSectionMsg<LogLine::MatchType::Exact>("Sending Notification"));
+            validLine = validLine || (line.checkSectionTag<LogLine::MatchType::Exact>("COMLib.ChatController.CPM") && line.checkSectionMethod<LogLine::MatchType::EndsWith>("sendNotification") && line.checkSectionMsg<LogLine::MatchType::Exact>("sending Notification"));
+            validLine = validLine || (line.checkSectionTag<LogLine::MatchType::Exact>("COMLib.LegacyStandalone") && line.checkSectionMethod<LogLine::MatchType::EndsWith>("sendNotification") && line.checkSectionMsg<LogLine::MatchType::Exact>("sending notification"));
+            validLine = validLine || (line.checkSectionTag<LogLine::MatchType::Exact>("COMLib.ChatController.OMACPMStandalone") && (
+                (line.checkSectionMethod<LogLine::MatchType::EndsWith>("sendNotification") && line.checkSectionMsg<LogLine::MatchType::Exact>("sending notification")) ||
+                (line.checkSectionMethod<LogLine::MatchType::EndsWith>("onIncomingCPMNotification") && line.checkSectionMsg<LogLine::MatchType::Exact>("Incoming CPM standalone notification"))));
+            validLine = validLine || (line.checkSectionTag<LogLine::MatchType::Exact>("COMLib.Chatbot") && line.checkSectionMethod<LogLine::MatchType::EndsWith>("onMessageUpdated") && line.checkSectionMsg<LogLine::MatchType::Exact>("Checking pending delete token operations"));
+
             if (!validLine)
                 return false;
 
-            return doMatchParams<int8_t>(line, filterState, [](int8_t value) -> std::string_view
+            return doMatchParams<int8_t>(line, RegXFilterState, [](int8_t value) -> std::string_view
             {
                 switch (value)
                 {
@@ -118,7 +139,7 @@ namespace la
 
             if (hasBoth || hasType)
             {
-                success = doMatchParams<int8_t>(line, filterType, [](int8_t value) -> std::string_view
+                success |= doMatchParams<int8_t>(line, RegXFilterType, [](int8_t value) -> std::string_view
                 {
                     switch (value)
                     {
@@ -133,7 +154,7 @@ namespace la
 
             if (hasBoth)
             {
-                success |= doMatchParams<int8_t>(line, filterState, [](int8_t value) -> std::string_view
+                success |= doMatchParams<int8_t>(line, RegXFilterState, [](int8_t value) -> std::string_view
                 {
                     switch (value)
                     {

@@ -14,6 +14,32 @@ namespace la
 {
 	namespace
 	{
+		std::vector<LinesTools::LineIndexRange> toolRetrieveAllExecutions(const LinesTools& linesTools)
+		{
+			auto execs = linesTools.windowFindAll({ 0, linesTools.lines().size() }, R"(|COMLib:  | ******************************* log start *******************************)");
+
+			if (!execs.empty() && (execs.front() == 0)) //skip if logs start on an execution
+				execs.erase(execs.begin());
+
+			if (execs.empty()) //there's just one big execution
+				return { LinesTools::LineIndexRange{0, linesTools.lines().size()} };
+
+			std::vector<LinesTools::LineIndexRange> ranges;
+
+			size_t lastIndex{ 0 };
+			for (auto curIndex : execs)
+			{
+				assert(lastIndex <= curIndex);
+				
+				if (lastIndex < curIndex) //avoid storing empty executions
+					ranges.push_back({ lastIndex, curIndex });
+
+				lastIndex = curIndex + 1; //skip the log line itself
+			}
+
+			return ranges;
+		}
+
 		std::vector<size_t> toolTaskExecution(const LinesTools& linesTools, int64_t taskId, LinesTools::LineIndexRange lineRange)
 		{
 			std::vector<size_t> lineIndices;
@@ -311,27 +337,16 @@ namespace la
 				enum class TaskStep { Unknown, Executing, Waiting, Finishing, Finished };
 
 				//find all executions
-				auto execList = linesTools.windowFindAll({ 0, linesTools.lines().size() }, R"(|COMLib:  | ******************************* log start *******************************)");
-
-				if (!execList.empty() && (execList.front() == 0)) //skip if logs start on an execution
-					execList.erase(execList.begin());
-				if (execList.empty()) //assume that there's one big execution
-					execList.push_back(linesTools.lines().size());
-
-				//extract info for each execution
-				size_t lastIndex{ 0 };
-				for (const auto& execLineIndex : execList)
+				for (const auto& execRange : toolRetrieveAllExecutions(linesTools))
 				{
-					assert(lastIndex <= execLineIndex);
-
 					ExecutionInfo execution;
-					execution.lineIndexStart = lastIndex;
-					execution.lineIndexEnd = lastIndex;
+					execution.lineIndexStart = execRange.start;
+					execution.lineIndexEnd = execRange.end;
 
 					LinesTools::FilterCollection filter{
 						LinesTools::FilterParam<LinesTools::FilterType::Tag, std::string_view>("COMLib.Scheduler") };
 
-					auto linesProcessed = linesTools.windowIterate({ lastIndex, execLineIndex }, filter, [&execution](size_t, LogLine line, size_t lineIndex)
+					auto linesProcessed = linesTools.windowIterate({ execRange.start, execRange.end }, filter, [&execution](size_t, LogLine line, size_t lineIndex)
 					{
 						TaskStep taskStep{ TaskStep::Unknown };
 						{
@@ -387,9 +402,7 @@ namespace la
 						return true;
 					});
 
-					assert(linesProcessed == (execLineIndex - lastIndex));
-					lastIndex += linesProcessed + 1; //skip exec line
-					execution.lineIndexEnd += linesProcessed;
+					assert(linesProcessed == execRange.numLines());
 
 					//we have an execution
 
@@ -538,71 +551,75 @@ namespace la
 			std::unordered_set<size_t> threadIds;
 			std::unordered_map<std::string, DialogData> dialogs;
 
-			/*
-			//find all executions
-			auto execList = linesTools.windowFindAll({ 0, linesTools.lines().size() }, R"(|COMLib:  | ******************************* log start *******************************)");
-
-			if (!execList.empty() && (execList.front() == 0)) //skip if logs start on an execution
-				execList.erase(execList.begin());
-			if (execList.empty()) //assume that there's one big execution
-				execList.push_back(linesTools.lines().size());
-			*/
-			LinesTools::FilterCollection filter{
+			const LinesTools::FilterCollection filter{
 				LinesTools::FilterParam<LinesTools::FilterType::LogLevel, LogLevel>(LogLevel::Debug),
 				LinesTools::FilterParam<LinesTools::FilterType::Tag, std::string_view>("COMLib.PJSIP"),
 				LinesTools::FilterParam<LinesTools::FilterType::Msg, std::string_view, LogLine::MatchType::Contains>("pjsua_core.c") };
-
-			linesTools.windowIterate({ 0, linesTools.lines().size() }, filter, [&regexs, &threadIds, &dialogs](size_t, LogLine line, size_t lineIndex)
+			
+			//find all executions
+			for (const auto& execRange : toolRetrieveAllExecutions(linesTools))
 			{
-				auto content = line.getSectionMsg();
+				threadIds.clear();
+				dialogs.clear();
 
-				threadIds.insert(line.threadId);
-
-				std::cmatch matches;
-				if (!std::regex_search(content.data(), content.data() + content.size(), matches, regexs.regexCallID))
-					return true;
-
-				auto callId = matches[1].str();
-
-				auto& dialog = dialogs[callId];
-
-				if (dialog.callId.empty())
-					dialog.callId = callId;
-
-				if (dialog.method.empty())
+				linesTools.windowIterate({ execRange.start, execRange.end }, filter, [&regexs, &threadIds, &dialogs](size_t, LogLine line, size_t lineIndex)
 				{
-					if (std::regex_search(content.data(), content.data() + content.size(), matches, regexs.regexCSeq))
-						dialog.method = matches[1].str();
+					auto content = line.getSectionMsg();
+
+					threadIds.insert(line.threadId);
+
+					std::cmatch matches;
+					if (!std::regex_search(content.data(), content.data() + content.size(), matches, regexs.regexCallID))
+						return true;
+
+					auto callId = matches[1].str();
+
+					auto& dialog = dialogs[callId];
+
+					if (dialog.callId.empty())
+						dialog.callId = callId;
+
+					if (dialog.method.empty())
+					{
+						if (std::regex_search(content.data(), content.data() + content.size(), matches, regexs.regexCSeq))
+							dialog.method = matches[1].str();
+					}
+
+					if (std::regex_search(content.data(), content.data() + content.size(), regexs.regexTX))
+						dialog.txLineIndices.push_back(lineIndex);
+					else if (std::regex_search(content.data(), content.data() + content.size(), regexs.regexRX))
+						dialog.rxLineIndices.push_back(lineIndex);
+
+					dialog.lineIndices.push_back(lineIndex);
+
+					return true;
+				});
+
+				//create json with results for this execution
+				{
+					nlohmann::json jResult;
+					jResult["lineIndexRange"] = { execRange.start, execRange.end };
+					jResult["threadIds"] = threadIds;
+
+					auto& jDialogs = jResult["dialogs"];
+					for (const auto& [callId, diag] : dialogs)
+					{
+						if (!params.empty() && (diag.method != params))
+							continue;
+
+						assert((diag.rxLineIndices.size() + diag.txLineIndices.size()) == diag.lineIndices.size());
+
+						nlohmann::json jInfo;
+						jInfo["callId"] = diag.callId;
+						jInfo["method"] = diag.method;
+						jInfo["txLineIndices"] = diag.txLineIndices;
+						jInfo["rxLineIndices"] = diag.rxLineIndices;
+						jInfo["linesIndex"] = resultCtx.addLineIndices(diag.lineIndices);
+						jDialogs.push_back(std::move(jInfo));
+					}
+
+					resultCtx.json().push_back(std::move(jResult));
 				}
-
-				if (std::regex_search(content.data(), content.data() + content.size(), regexs.regexTX))
-					dialog.txLineIndices.push_back(lineIndex);
-				else if (std::regex_search(content.data(), content.data() + content.size(), regexs.regexRX))
-					dialog.rxLineIndices.push_back(lineIndex);
-
-				dialog.lineIndices.push_back(lineIndex);
-
-				return true;
-			});
-
-			auto& jResult = resultCtx.json();
-			jResult["threadIds"] = threadIds;
-
-			auto& jDialogs = jResult["dialogs"];
-			for (const auto& [callId, diag] : dialogs)
-			{
-				if (!params.empty() && (diag.method != params))
-					continue;
-
-				assert((diag.rxLineIndices.size() + diag.txLineIndices.size()) == diag.lineIndices.size());
-
-				nlohmann::json jInfo;
-				jInfo["callId"] = diag.callId;
-				jInfo["method"] = diag.method;
-				jInfo["txLineIndices"] = diag.txLineIndices;
-				jInfo["rxLineIndices"] = diag.rxLineIndices;
-				jInfo["linesIndex"] = resultCtx.addLineIndices(diag.lineIndices);
-				jDialogs.push_back(std::move(jInfo));
 			}
 		}
 	}
