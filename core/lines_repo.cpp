@@ -233,20 +233,20 @@ namespace la
 				return m_jsonOutput;
 			}
 
-			void addNetworkPacketIPV4(std::string_view srcAddress, std::string_view dstAddress, int64_t timestamp, size_t lineIndex, std::tuple<size_t, size_t> lineContentRange) override
+			void addNetworkPacketIPV4(std::string_view srcAddress, std::string_view dstAddress, int64_t timestamp, LineContent lineContent) override
 			{
 				if (srcAddress.empty() || dstAddress.empty())
 					return;
 
-				addNetworkPacket("ipv4", srcAddress, dstAddress, timestamp, lineIndex, lineContentRange);
+				addNetworkPacket("ipv4", srcAddress, dstAddress, timestamp, lineContent);
 			}
 
-			void addNetworkPacketIPV6(std::string_view srcAddress, std::string_view dstAddress, int64_t timestamp, size_t lineIndex, std::tuple<size_t, size_t> lineContentRange) override
+			void addNetworkPacketIPV6(std::string_view srcAddress, std::string_view dstAddress, int64_t timestamp, LineContent lineContent) override
 			{
 				if (srcAddress.empty() || dstAddress.empty())
 					return;
 
-				addNetworkPacket("ipv6", srcAddress, dstAddress, timestamp, lineIndex, lineContentRange);
+				addNetworkPacket("ipv6", srcAddress, dstAddress, timestamp, lineContent);
 			}
 
 			size_t addLineIndices(std::string_view name, const std::vector<size_t>& indices) override
@@ -264,15 +264,20 @@ namespace la
 			}
 
 		private:
-			void addNetworkPacket(std::string_view domain, std::string_view srcAddress, std::string_view dstAddress, int64_t timestamp, size_t lineIndex, std::tuple<size_t, size_t> lineContentRange)
+			void addNetworkPacket(std::string_view domain, std::string_view srcAddress, std::string_view dstAddress, int64_t timestamp, LineContent lineContent)
 			{
 				nlohmann::json jNewPacket;
 				jNewPacket["domain"] = domain;
-				jNewPacket["srcAddress"] = srcAddress;
-				jNewPacket["dstAddress"] = dstAddress;
 				jNewPacket["timestamp"] = timestamp;
-				jNewPacket["lineIndex"] = lineIndex;
-				jNewPacket["lineContentRange"] = { std::get<0>(lineContentRange), std::get<1>(lineContentRange) };
+
+				auto& jEndpoints = jNewPacket["endpoints"];
+				jEndpoints.push_back(srcAddress);
+				jEndpoints.push_back(dstAddress);
+				
+				auto& jLine = jNewPacket["line"];
+				jLine["index"] = lineContent.lineIndex;
+				jLine["offset"] = lineContent.contentOffset;
+				jLine["size"] = lineContent.contentSize;
 
 				m_jsonNetworkPackets.push_back(std::move(jNewPacket));
 			}
@@ -472,30 +477,51 @@ namespace la
 
 		for (const auto& jPacket : jRoot["networkPackets"])
 		{
+			if (!jPacket.contains("domain") || !jPacket.contains("timestamp") || !jPacket.contains("endpoints") || !jPacket.contains("line"))
+				continue;
+
 			auto vDomain = jPacket["domain"].get<std::string_view>();
 			if ((vDomain != "ipv4") && (vDomain != "ipv6"))
 				continue;
 
-			auto vSrcAddress = jPacket["srcAddress"].get<std::string_view>();
-			auto vDstAddress = jPacket["dstAddress"].get<std::string_view>();
-			auto vTimestamp = jPacket["timestamp"].get<int64_t>();
-			auto vLineIndex = jPacket["lineIndex"].get<size_t>();
-
-			std::tuple<size_t, size_t> vLineContentRange;
+			std::string_view vSrcAddress, vDstAddress;
 			{
-				auto jValue = jPacket["lineContentRange"];
-				vLineContentRange = { jValue[0].get<size_t>(), jValue[1].get<size_t>() };
+				auto& jEndpoints = jPacket["endpoints"];
+				if (!jEndpoints.is_array() || (jEndpoints.size() != 2))
+					continue;
+
+				vSrcAddress = jEndpoints[0].get<std::string_view>();
+				vDstAddress = jEndpoints[1].get<std::string_view>();
+				if (vSrcAddress.empty() || vDstAddress.empty())
+					continue;
 			}
 
-			if ((vLineIndex < 0) || (vLineIndex >= m_lines.size()))
-				continue;
+			auto vTimestamp = jPacket["timestamp"].get<int64_t>();
 
-			const auto& line = m_lines[vLineIndex];
+			std::string_view vPayload;
+			{
+				auto& jLine = jPacket["line"];
+				if (!jLine.contains("index") || !jLine.contains("offset") || !jLine.contains("size"))
+					continue;
+
+				auto lineIndex = jLine["index"].get<size_t>();
+				if ((lineIndex < 0) || (lineIndex >= m_lines.size()))
+					continue;
+
+				auto lineContent = m_lines[lineIndex].toStr();
+
+				auto contentOffset = jLine["offset"].get<size_t>();
+				auto contentSize = jLine["size"].get<size_t>();
+				if ((contentOffset >= lineContent.size()) || ((contentOffset + contentSize) > lineContent.size()))
+					continue;
+
+				vPayload = lineContent.substr(contentOffset, contentSize);
+			}
 
 			if (vDomain == "ipv4")
-				utils::Network::writePCAPDataIPV4(out, vSrcAddress, vDstAddress, vTimestamp, { line.data.start + std::get<0>(vLineContentRange), std::get<1>(vLineContentRange) });
+				utils::Network::writePCAPDataIPV4(out, vSrcAddress, vDstAddress, vTimestamp, { vPayload.data(), vPayload.size() });
 			else
-				utils::Network::writePCAPDataIPV6(out, vSrcAddress, vDstAddress, vTimestamp, { line.data.start + std::get<0>(vLineContentRange), std::get<1>(vLineContentRange) });
+				utils::Network::writePCAPDataIPV6(out, vSrcAddress, vDstAddress, vTimestamp, { vPayload.data(), vPayload.size() });
 		}
 
 		return true;

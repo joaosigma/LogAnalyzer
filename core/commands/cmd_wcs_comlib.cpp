@@ -540,7 +540,6 @@ namespace la
 				std::regex matchRX{ R"(\.RX \d+ bytes )", std::regex::ECMAScript | std::regex::icase };
 
 				std::regex extractNetworkData{ R"(\) (\bto\b|\bfrom\b) (?:\bTCP\b|\bUDP\b) (\d+\.\d+\.\d+\.\d+:\d+):)" };
-				std::regex extractNetworkVia{ R"(Via: \w+\/\d\.\d\/(?:\bTCP\b|\bUDP\b) (\d+\.\d+\.\d+\.\d+:\d+);)" };
 			} regexs;
 
 			struct DialogData
@@ -573,8 +572,13 @@ namespace la
 						auto offset = content.find(":\n");
 						if ((offset == std::string_view::npos) || ((offset + 2) >= content.size()))
 							return true;
-						
-						body = std::string_view{ line.data.start + line.sectionMsg.offset + offset + 2, line.sectionMsg.size - offset };
+
+						offset += 2;
+						body = std::string_view{ line.data.start + line.sectionMsg.offset + offset, line.sectionMsg.size - offset };
+
+						std::string_view ignoreSufix{ "\n--end msg--" };
+						if ((body.size() >= ignoreSufix.size()) && (body.compare(body.length() - ignoreSufix.length(), ignoreSufix.length(), ignoreSufix) == 0))
+							body = body.substr(0, body.size() - ignoreSufix.size());
 					}
 
 					//without a Call-ID, ignore this line
@@ -608,23 +612,25 @@ namespace la
 
 					//gather network packet info
 					{
-
 						std::string srcAddress, dstAddress;
 
-						std::cmatch matchesRoot, matchesVia;
-						if (std::regex_search(content.data(), content.data() + content.size(), matchesRoot, regexs.extractNetworkData) &&
-							std::regex_search(content.data(), content.data() + content.size(), matchesVia, regexs.extractNetworkVia))
+						std::cmatch matchesRoot;
+						if (std::regex_search(content.data(), content.data() + content.size(), matchesRoot, regexs.extractNetworkData))
 						{
 							std::string_view dir{ matchesRoot[1].first, static_cast<size_t>(matchesRoot[1].second - matchesRoot[1].first) };
 							assert((dir == "to") || (dir == "from"));
 
 							std::string_view rootAddress{ matchesRoot[2].first, static_cast<size_t>(matchesRoot[2].second - matchesRoot[2].first) };
-							std::string_view viaAddress{ matchesVia[1].first, static_cast<size_t>(matchesVia[1].second - matchesVia[1].first) };
+
+							CommandsRepo::IResultCtx::LineContent lineContent;
+							lineContent.lineIndex = lineIndex;
+							lineContent.contentOffset = body.data() - line.data.start;
+							lineContent.contentSize = body.size();
 
 							if (dir == "to")
-								resultCtx.addNetworkPacketIPV4(viaAddress, rootAddress, line.timestamp, lineIndex, { body.data() - line.data.start, body.size() });
+								resultCtx.addNetworkPacketIPV4("127.0.0.1:0", rootAddress, line.timestamp, lineContent);
 							else
-								resultCtx.addNetworkPacketIPV4(rootAddress, viaAddress, line.timestamp, lineIndex, { body.data() - line.data.start, body.size() });
+								resultCtx.addNetworkPacketIPV4(rootAddress, "127.0.0.1:0", line.timestamp, lineContent);
 						}
 					}
 

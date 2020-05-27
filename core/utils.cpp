@@ -136,13 +136,13 @@ namespace la::utils
 			{
 				LinuxCookedHeader header;
 				std::memset(&header, 0, sizeof(header));
-				header.packet_type = 0;
-				header.arphrd_type = 1; //ethernet
-				header.address_len = 6;
+				header.packet_type = htons(0);
+				header.arphrd_type = htons(1); //ethernet
+				header.address_len = htons(6);
 				header.address[0] = 0x08; //08:00:08:00:00:00
 				header.address[1] = 0x00;
 				header.address[2] = 0x08;
-				header.protocol = static_cast<uint16_t>((protocol == Protocol::IPV4) ? 0x0800 : 0x86DD);
+				header.protocol = htons(static_cast<uint16_t>((protocol == Protocol::IPV4) ? 0x0800 : 0x86DD));
 
 				streamOut.write(reinterpret_cast<const char*>(&header), sizeof(LinuxCookedHeader));
 			}
@@ -189,14 +189,14 @@ namespace la::utils
 			uint8_t hdr_len : 4;
 			uint8_t version : 4;
 			uint8_t tos;
-			uint16_t length;
+			uint16_t total_length;
 			uint16_t id;
-			uint16_t fragment;
+			uint16_t flags_fragment;
 			uint8_t ttl;
 			uint8_t protocol;
 			uint16_t checksum;
-			uint8_t src[4];
-			uint8_t dst[4];
+			uint32_t src;
+			uint32_t dst;
 		};
 #pragma pack()
 
@@ -231,15 +231,15 @@ namespace la::utils
 			headerIPV4.version = 4;
 			headerIPV4.hdr_len = 5;
 			headerIPV4.tos = 0;
-			headerIPV4.length = htons(static_cast<uint16_t>(sizeof(IPV4Header) + sizeof(UDPHeader) + std::get<1>(payload)));
+			headerIPV4.total_length = htons(static_cast<uint16_t>(sizeof(IPV4Header) + sizeof(UDPHeader) + std::get<1>(payload)));
 			headerIPV4.id = 0;
-			headerIPV4.fragment = htons(0x4000); //don't fragment
+			headerIPV4.flags_fragment = htons(0x4000); //don't fragment
 			headerIPV4.ttl = 128;
 			headerIPV4.protocol = 17; //UDP
 			headerIPV4.checksum = 0;
-			if (inet_pton(AF_INET, srcIP, headerIPV4.src) != 1)
+			if (inet_pton(AF_INET, srcIP, &headerIPV4.src) != 1)
 				return false;
-			if (inet_pton(AF_INET, dstIP, headerIPV4.dst) != 1)
+			if (inet_pton(AF_INET, dstIP, &headerIPV4.dst) != 1)
 				return false;
 
 			headerIPV4.checksum = ipChecksumFinal(ipChecksum(reinterpret_cast<uint8_t*>(&headerIPV4), sizeof(IPV4Header)));
@@ -248,16 +248,13 @@ namespace la::utils
 			headerUDP.dst_port = htons(dstPort);
 			headerUDP.length = htons(static_cast<uint16_t>(sizeof(UDPHeader) + std::get<1>(payload)));
 						
-			headerUDP.checksum = ipChecksumAdd(headerUDP.checksum, ipChecksum(headerIPV4.src, 8));
+			headerUDP.checksum = ipChecksumAdd(headerUDP.checksum, ipChecksum(reinterpret_cast<uint8_t*>(&headerIPV4.src), sizeof(uint32_t) * 2));
 			headerUDP.checksum = ipChecksumAdd(headerUDP.checksum, headerIPV4.protocol << 8);
 			headerUDP.checksum = ipChecksumAdd(headerUDP.checksum, headerUDP.length);
-
 			headerUDP.checksum = ipChecksumAdd(headerUDP.checksum, headerUDP.src_port);
 			headerUDP.checksum = ipChecksumAdd(headerUDP.checksum, headerUDP.dst_port);
 			headerUDP.checksum = ipChecksumAdd(headerUDP.checksum, headerUDP.length);
-
 			headerUDP.checksum = ipChecksumAdd(headerUDP.checksum, ipChecksum(reinterpret_cast<const uint8_t*>(std::get<0>(payload)), std::get<1>(payload)));
-
 			headerUDP.checksum = ipChecksumFinal(headerUDP.checksum);
 		}
 
@@ -290,6 +287,56 @@ namespace la::utils
 		IPV6Header headerIPV6;
 		std::memset(&headerUDP, 0, sizeof(UDPHeader));
 		std::memset(&headerIPV6, 0, sizeof(IPV6Header));
+
+		{
+			char srcIP[128], dstIP[128];
+			uint16_t srcPort, dstPort;
+			{
+				auto extractAddress = [](std::string_view address, char* const ip, uint16_t& port)
+				{
+					if (address.empty() || (address.front() != '['))
+						return false;
+
+					auto it = address.find("]:");
+					if (it == std::string_view::npos)
+						return false;
+
+					std::memcpy(ip, address.data() + 1, it - 1);
+					ip[it - 1] = '\0';
+
+					if (auto [p, ec] = std::from_chars(address.data() + it + 2, address.data() + address.size(), port); ec != std::errc())
+						return false;
+
+					return true;
+				};
+
+				if (!extractAddress(srcAddress, srcIP, srcPort) || !extractAddress(dstAddress, dstIP, dstPort))
+					return false;
+			}
+
+			headerIPV6.version = 6;
+			headerIPV6.priority = 0;
+			headerIPV6.payload_len = htons(static_cast<uint16_t>(sizeof(UDPHeader) + std::get<1>(payload)));
+			headerIPV6.nexthdr = 17; //UDP
+			headerIPV6.hop_limit = 0x80;
+			if (inet_pton(AF_INET6, srcIP, &headerIPV6.src) != 1)
+				return false;
+			if (inet_pton(AF_INET6, dstIP, &headerIPV6.dst) != 1)
+				return false;
+
+			headerUDP.src_port = htons(srcPort);
+			headerUDP.dst_port = htons(dstPort);
+			headerUDP.length = htons(static_cast<uint16_t>(sizeof(UDPHeader) + std::get<1>(payload)));
+			
+			headerUDP.checksum = ipChecksumAdd(headerUDP.checksum, ipChecksum(reinterpret_cast<uint8_t*>(&headerIPV6.src), 32));
+			headerUDP.checksum = ipChecksumAdd(headerUDP.checksum, headerIPV6.nexthdr << 8);
+			headerUDP.checksum = ipChecksumAdd(headerUDP.checksum, headerUDP.length);
+			headerUDP.checksum = ipChecksumAdd(headerUDP.checksum, headerUDP.src_port);
+			headerUDP.checksum = ipChecksumAdd(headerUDP.checksum, headerUDP.dst_port);
+			headerUDP.checksum = ipChecksumAdd(headerUDP.checksum, headerUDP.length);
+			headerUDP.checksum = ipChecksumAdd(headerUDP.checksum, ipChecksum(reinterpret_cast<const uint8_t*>(std::get<0>(payload)), std::get<1>(payload)));
+			headerUDP.checksum = ipChecksumFinal(headerUDP.checksum);
+		}
 
 		writePacket<3>(streamOut, Protocol::IPV6, timestamp, { {
 			{ &headerIPV6, sizeof(IPV6Header) },
