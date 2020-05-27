@@ -20,12 +20,15 @@ namespace la
 		{
 			virtual nlohmann::json& json() noexcept = 0;
 
+			virtual void addNetworkPacketIPV4(std::string_view srcAddress, std::string_view dstAddress, int64_t timestamp, size_t lineIndex, std::tuple<size_t, size_t> lineContentRange) = 0;
+			virtual void addNetworkPacketIPV6(std::string_view srcAddress, std::string_view dstAddress, int64_t timestamp, size_t lineIndex, std::tuple<size_t, size_t> lineContentRange) = 0;
+
+			virtual size_t addLineIndices(std::string_view name, const std::vector<size_t>& indices) = 0;
+
 			size_t addLineIndices(const std::vector<size_t>& indices)
 			{
 				return addLineIndices({}, indices);
 			};
-
-			virtual size_t addLineIndices(std::string_view name, const std::vector<size_t>& indices) = 0;
 		};
 
 		struct CommandInfo

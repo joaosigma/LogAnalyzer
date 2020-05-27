@@ -1,5 +1,6 @@
 #include "lines_repo.hpp"
 
+#include "utils.hpp"
 #include "files_repo.hpp"
 
 #include <set>
@@ -217,17 +218,35 @@ namespace la
 		jResult["command"]["name"] = name;
 		jResult["command"]["params"] = params;
 
-		struct ResultCtx
+		class ResultCtx
 			: public CommandsRepo::IResultCtx
 		{
-			ResultCtx(nlohmann::json& jsonLineIndices, nlohmann::json& jsonOutput)
+		public:
+			ResultCtx(nlohmann::json& jsonLineIndices, nlohmann::json& jsonNetworkPackets, nlohmann::json& jsonOutput)
 				: m_jsonOutput{ jsonOutput }
 				, m_jsonLineIndices{ jsonLineIndices }
+				, m_jsonNetworkPackets{ jsonNetworkPackets }
 			{ }
 
 			nlohmann::json& json() noexcept override
 			{
 				return m_jsonOutput;
+			}
+
+			void addNetworkPacketIPV4(std::string_view srcAddress, std::string_view dstAddress, int64_t timestamp, size_t lineIndex, std::tuple<size_t, size_t> lineContentRange) override
+			{
+				if (srcAddress.empty() || dstAddress.empty())
+					return;
+
+				addNetworkPacket("ipv4", srcAddress, dstAddress, timestamp, lineIndex, lineContentRange);
+			}
+
+			void addNetworkPacketIPV6(std::string_view srcAddress, std::string_view dstAddress, int64_t timestamp, size_t lineIndex, std::tuple<size_t, size_t> lineContentRange) override
+			{
+				if (srcAddress.empty() || dstAddress.empty())
+					return;
+
+				addNetworkPacket("ipv6", srcAddress, dstAddress, timestamp, lineIndex, lineContentRange);
 			}
 
 			size_t addLineIndices(std::string_view name, const std::vector<size_t>& indices) override
@@ -244,8 +263,24 @@ namespace la
 				return curIndex;
 			}
 
+		private:
+			void addNetworkPacket(std::string_view domain, std::string_view srcAddress, std::string_view dstAddress, int64_t timestamp, size_t lineIndex, std::tuple<size_t, size_t> lineContentRange)
+			{
+				nlohmann::json jNewPacket;
+				jNewPacket["domain"] = domain;
+				jNewPacket["srcAddress"] = srcAddress;
+				jNewPacket["dstAddress"] = dstAddress;
+				jNewPacket["timestamp"] = timestamp;
+				jNewPacket["lineIndex"] = lineIndex;
+				jNewPacket["lineContentRange"] = { std::get<0>(lineContentRange), std::get<1>(lineContentRange) };
+
+				m_jsonNetworkPackets.push_back(std::move(jNewPacket));
+			}
+
+		private:
 			nlohmann::json& m_jsonOutput;
 			nlohmann::json& m_jsonLineIndices;
+			nlohmann::json& m_jsonNetworkPackets;
 		};
 
 		bool executed{ false };
@@ -257,7 +292,7 @@ namespace la
 			if (itCmd != itCmds->second.end())
 			{
 				executed = true;
-				ResultCtx resultCtx{ jResult["linesIndices"], jResult["output"] };
+				ResultCtx resultCtx{ jResult["linesIndices"], jResult["networkPackets"], jResult["output"] };
 
 				itCmd->executionCb(resultCtx, m_linesTools, params);
 			}
@@ -345,7 +380,7 @@ namespace la
 		return true;
 	}
 
-	bool LinesRepo::exportCommandResult(ExportOptions options, std::string_view commandResult) const
+	bool LinesRepo::exportCommandLines(ExportOptions options, std::string_view commandResult) const
 	{
 		if (options.filePath.empty() || commandResult.empty())
 			return false;
@@ -414,6 +449,53 @@ namespace la
 			}
 
 			out.flush();
+		}
+
+		return true;
+	}
+	
+	bool LinesRepo::exportCommandNetworkPackets(ExportOptions options, std::string_view commandResult) const
+	{
+		if (options.filePath.empty() || commandResult.empty())
+			return false;
+
+		auto jRoot = nlohmann::json::parse(commandResult);
+		if (!jRoot.is_object() || !jRoot.contains("networkPackets") || !jRoot["networkPackets"].is_array())
+			return false;
+
+		auto path = std::filesystem::u8path(options.filePath);
+		std::ofstream out(path.native().c_str(), std::ios::out | std::ios::binary | std::ios::ate | (options.appendToFile ? std::ios::app : std::ios::trunc));
+		if (!out.good())
+			return false;
+
+		utils::Network::writePCAPHeader(out);
+
+		for (const auto& jPacket : jRoot["networkPackets"])
+		{
+			auto vDomain = jPacket["domain"].get<std::string_view>();
+			if ((vDomain != "ipv4") && (vDomain != "ipv6"))
+				continue;
+
+			auto vSrcAddress = jPacket["srcAddress"].get<std::string_view>();
+			auto vDstAddress = jPacket["dstAddress"].get<std::string_view>();
+			auto vTimestamp = jPacket["timestamp"].get<int64_t>();
+			auto vLineIndex = jPacket["lineIndex"].get<size_t>();
+
+			std::tuple<size_t, size_t> vLineContentRange;
+			{
+				auto jValue = jPacket["lineContentRange"];
+				vLineContentRange = { jValue[0].get<size_t>(), jValue[1].get<size_t>() };
+			}
+
+			if ((vLineIndex < 0) || (vLineIndex >= m_lines.size()))
+				continue;
+
+			const auto& line = m_lines[vLineIndex];
+
+			if (vDomain == "ipv4")
+				utils::Network::writePCAPDataIPV4(out, vSrcAddress, vDstAddress, vTimestamp, { line.data.start + std::get<0>(vLineContentRange), std::get<1>(vLineContentRange) });
+			else
+				utils::Network::writePCAPDataIPV6(out, vSrcAddress, vDstAddress, vTimestamp, { line.data.start + std::get<0>(vLineContentRange), std::get<1>(vLineContentRange) });
 		}
 
 		return true;
