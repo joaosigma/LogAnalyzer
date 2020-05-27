@@ -533,23 +533,24 @@ namespace la
 		void cmdSIPFlows(CommandsRepo::IResultCtx& resultCtx, const LinesTools& linesTools, std::string_view params)
 		{
 			struct {
-				std::regex regexCallID{ R"(Call-ID: (.*))", std::regex::ECMAScript | std::regex::icase };
-				std::regex regexCSeq{ R"(CSeq: .+ (.+))", std::regex::ECMAScript | std::regex::icase };
-				std::regex regexTX{ R"(\.TX \d+ bytes )", std::regex::ECMAScript | std::regex::icase };
-				std::regex regexRX{ R"(\.RX \d+ bytes )", std::regex::ECMAScript | std::regex::icase };
+				std::regex extractCallID{ R"(Call-ID: (.*))", std::regex::ECMAScript | std::regex::icase };
+				std::regex extractCSeq{ R"(CSeq: .+ (.+))", std::regex::ECMAScript | std::regex::icase };
+				
+				std::regex matchTX{ R"(\.TX \d+ bytes )", std::regex::ECMAScript | std::regex::icase };
+				std::regex matchRX{ R"(\.RX \d+ bytes )", std::regex::ECMAScript | std::regex::icase };
+
+				std::regex extractNetworkData{ R"(\) (\bto\b|\bfrom\b) (?:\bTCP\b|\bUDP\b) (\d+\.\d+\.\d+\.\d+:\d+):)" };
 			} regexs;
 
 			struct DialogData
 			{
-				std::string method;
-				std::string callId;
+				std::string_view method;
 				std::vector<size_t> txLineIndices;
 				std::vector<size_t> rxLineIndices;
 				std::vector<size_t> lineIndices;
 			};
 
-			std::unordered_set<size_t> threadIds;
-			std::unordered_map<std::string, DialogData> dialogs;
+			std::unordered_map<std::string_view, DialogData> dialogs;
 
 			const LinesTools::FilterCollection filter{
 				LinesTools::FilterParam<LinesTools::FilterType::LogLevel, LogLevel>(LogLevel::Debug),
@@ -559,38 +560,79 @@ namespace la
 			//find all executions
 			for (const auto& execRange : toolRetrieveAllExecutions(linesTools))
 			{
-				threadIds.clear();
 				dialogs.clear();
 
-				linesTools.windowIterate({ execRange.start, execRange.end }, filter, [&regexs, &threadIds, &dialogs](size_t, LogLine line, size_t lineIndex)
+				linesTools.windowIterate({ execRange.start, execRange.end }, filter, [&regexs, &dialogs, &resultCtx](size_t, LogLine line, size_t lineIndex)
 				{
 					auto content = line.getSectionMsg();
 
-					threadIds.insert(line.threadId);
-
-					std::cmatch matches;
-					if (!std::regex_search(content.data(), content.data() + content.size(), matches, regexs.regexCallID))
-						return true;
-
-					auto callId = matches[1].str();
-
-					auto& dialog = dialogs[callId];
-
-					if (dialog.callId.empty())
-						dialog.callId = callId;
-
-					if (dialog.method.empty())
+					//without a body, ignore this line
+					std::string_view body;
 					{
-						if (std::regex_search(content.data(), content.data() + content.size(), matches, regexs.regexCSeq))
-							dialog.method = matches[1].str();
+						auto offset = content.find(":\n");
+						if ((offset == std::string_view::npos) || ((offset + 2) >= content.size()))
+							return true;
+
+						offset += 2;
+						body = std::string_view{ line.data.start + line.sectionMsg.offset + offset, line.sectionMsg.size - offset };
+
+						std::string_view ignoreSufix{ "\n--end msg--" };
+						if ((body.size() >= ignoreSufix.size()) && (body.compare(body.length() - ignoreSufix.length(), ignoreSufix.length(), ignoreSufix) == 0))
+							body = body.substr(0, body.size() - ignoreSufix.size());
 					}
 
-					if (std::regex_search(content.data(), content.data() + content.size(), regexs.regexTX))
-						dialog.txLineIndices.push_back(lineIndex);
-					else if (std::regex_search(content.data(), content.data() + content.size(), regexs.regexRX))
-						dialog.rxLineIndices.push_back(lineIndex);
+					//without a Call-ID, ignore this line
+					std::string_view callId;
+					{
+						std::cmatch matches;
+						if (!std::regex_search(content.data(), content.data() + content.size(), matches, regexs.extractCallID))
+							return true;
 
-					dialog.lineIndices.push_back(lineIndex);
+						callId = std::string_view{ matches[1].first, static_cast<size_t>(matches[1].second - matches[1].first) };
+					}
+
+					//gather info into a dialog
+					{
+						auto& dialog = dialogs[callId];
+
+						if (dialog.method.empty())
+						{
+							std::cmatch matches;
+							if (std::regex_search(content.data(), content.data() + content.size(), matches, regexs.extractCSeq))
+								dialog.method = { matches[1].first, static_cast<size_t>(matches[1].second - matches[1].first) };
+						}
+
+						if (std::regex_search(content.data(), content.data() + content.size(), regexs.matchTX))
+							dialog.txLineIndices.push_back(lineIndex);
+						else if (std::regex_search(content.data(), content.data() + content.size(), regexs.matchRX))
+							dialog.rxLineIndices.push_back(lineIndex);
+
+						dialog.lineIndices.push_back(lineIndex);
+					}
+
+					//gather network packet info
+					{
+						std::string srcAddress, dstAddress;
+
+						std::cmatch matchesRoot;
+						if (std::regex_search(content.data(), content.data() + content.size(), matchesRoot, regexs.extractNetworkData))
+						{
+							std::string_view dir{ matchesRoot[1].first, static_cast<size_t>(matchesRoot[1].second - matchesRoot[1].first) };
+							assert((dir == "to") || (dir == "from"));
+
+							std::string_view rootAddress{ matchesRoot[2].first, static_cast<size_t>(matchesRoot[2].second - matchesRoot[2].first) };
+
+							CommandsRepo::IResultCtx::LineContent lineContent;
+							lineContent.lineIndex = lineIndex;
+							lineContent.contentOffset = body.data() - line.data.start;
+							lineContent.contentSize = body.size();
+
+							if (dir == "to")
+								resultCtx.addNetworkPacketIPV4("127.0.0.1:0", rootAddress, line.timestamp, lineContent);
+							else
+								resultCtx.addNetworkPacketIPV4(rootAddress, "127.0.0.1:0", line.timestamp, lineContent);
+						}
+					}
 
 					return true;
 				});
@@ -599,7 +641,6 @@ namespace la
 				{
 					nlohmann::json jResult;
 					jResult["lineIndexRange"] = { execRange.start, execRange.end };
-					jResult["threadIds"] = threadIds;
 
 					auto& jDialogs = jResult["dialogs"];
 					for (const auto& [callId, diag] : dialogs)
@@ -610,7 +651,7 @@ namespace la
 						assert((diag.rxLineIndices.size() + diag.txLineIndices.size()) == diag.lineIndices.size());
 
 						nlohmann::json jInfo;
-						jInfo["callId"] = diag.callId;
+						jInfo["callId"] = callId;
 						jInfo["method"] = diag.method;
 						jInfo["txLineIndices"] = diag.txLineIndices;
 						jInfo["rxLineIndices"] = diag.rxLineIndices;

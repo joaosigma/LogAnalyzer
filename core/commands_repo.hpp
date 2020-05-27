@@ -18,14 +18,23 @@ namespace la
 	public:
 		struct IResultCtx
 		{
+			struct LineContent
+			{
+				size_t lineIndex;
+				size_t contentOffset, contentSize;
+			};
+
 			virtual nlohmann::json& json() noexcept = 0;
+
+			virtual void addNetworkPacketIPV4(std::string_view srcAddress, std::string_view dstAddress, int64_t timestamp, LineContent lineContent) = 0;
+			virtual void addNetworkPacketIPV6(std::string_view srcAddress, std::string_view dstAddress, int64_t timestamp, LineContent lineContent) = 0;
+
+			virtual size_t addLineIndices(std::string_view name, const std::vector<size_t>& indices) = 0;
 
 			size_t addLineIndices(const std::vector<size_t>& indices)
 			{
 				return addLineIndices({}, indices);
 			};
-
-			virtual size_t addLineIndices(std::string_view name, const std::vector<size_t>& indices) = 0;
 		};
 
 		struct CommandInfo

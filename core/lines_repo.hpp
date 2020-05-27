@@ -116,7 +116,8 @@ namespace la
 		std::string executeCommand(std::string_view tag, std::string_view name, std::string_view params) const;
 
 		bool exportLines(ExportOptions options, size_t indexStart, size_t count) const;
-		bool exportCommandResult(ExportOptions options, std::string_view commandResult) const;
+		bool exportCommandLines(ExportOptions options, std::string_view commandResult) const;
+		bool exportCommandNetworkPackets(ExportOptions options, std::string_view commandResult) const;
 
 	private:
 		LinesRepo(std::unique_ptr<FilesRepo> repoFiles) noexcept;

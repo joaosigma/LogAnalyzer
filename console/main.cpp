@@ -289,14 +289,14 @@ int main(int argc, char* argv[])
 			auto jTags = nlohmann::json::parse(cmds);
 			for (const auto& jTag : jTags)
 			{
-				std::cout << fmt::format("Available commands for \"{}\" tag:", jTag["name"].get<std::string>()) << std::endl;
+				std::cout << fmt::format("Available commands for \"{}\" tag:", jTag["name"].get<std::string_view>()) << std::endl;
 
 				for (const auto& jCmd : jTag["cmds"])
 				{
-					std::cout << "\t" << fmt::format("Name: \"{}\"", jCmd["name"].get<std::string>()) << std::endl;
-					std::cout << "\t" << fmt::format("Help: \"{}\"", jCmd["help"].get<std::string>()) << std::endl;
+					std::cout << "\t" << fmt::format("Name: \"{}\"", jCmd["name"].get<std::string_view>()) << std::endl;
+					std::cout << "\t" << fmt::format("Help: \"{}\"", jCmd["help"].get<std::string_view>()) << std::endl;
 					if (jCmd.count("paramsHelp") == 1)
-						std::cout << "\t" << fmt::format("Parameters: \"{}\"", jCmd["paramsHelp"].get<std::string>()) << std::endl;
+						std::cout << "\t" << fmt::format("Parameters: \"{}\"", jCmd["paramsHelp"].get<std::string_view>()) << std::endl;
 					std::cout << std::endl;
 				}
 			}
@@ -407,7 +407,7 @@ int main(int argc, char* argv[])
 			continue;
 		}
 
-		if ((params.size() >= 2) && ((params[0] == "ex") || (params[0] == "export")))
+		if ((params.size() >= 2) && (params.size() <= 3) && ((params[0] == "ex") || (params[0] == "export")))
 		{
 			if (ctx.cmd.result.empty())
 			{
@@ -422,7 +422,19 @@ int main(int argc, char* argv[])
 				options.appendToFile = true;
 				options.translationType = la::TranslatorsRepo::Type::Translated;
 
-				if (!repoLines->exportCommandResult(options, ctx.cmd.result))
+				if (!repoLines->exportCommandLines(options, ctx.cmd.result))
+					std::cout << "error exporting content to file" << std::endl;
+				continue;
+			}
+
+			if ((params.size() == 3) && (params[1] == "-pcap"))
+			{
+				la::LinesRepo::ExportOptions options;
+				options.filePath = params[2];
+				options.appendToFile = false;
+				options.translationType = la::TranslatorsRepo::Type::Raw;
+
+				if (!repoLines->exportCommandNetworkPackets(options, ctx.cmd.result))
 					std::cout << "error exporting content to file" << std::endl;
 				continue;
 			}
