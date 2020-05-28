@@ -97,8 +97,8 @@ namespace la
 
 		LinesRepo(const LinesRepo&) = delete;
 		LinesRepo& operator=(const LinesRepo&) = delete;
-		LinesRepo(LinesRepo&&) = default;
-		LinesRepo& operator=(LinesRepo&&) = default;
+		LinesRepo(LinesRepo&&) = delete;
+		LinesRepo& operator=(LinesRepo&&) = delete;
 
 		size_t numFiles() const noexcept;
 		size_t numLines() const noexcept;

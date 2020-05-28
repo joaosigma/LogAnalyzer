@@ -2,6 +2,7 @@
 
 #include <array>
 #include <chrono>
+#include <cstring>
 #include <numeric>
 #include <ostream>
 #include <charconv>
@@ -247,7 +248,7 @@ namespace la::utils
 			headerUDP.src_port = htons(srcPort);
 			headerUDP.dst_port = htons(dstPort);
 			headerUDP.length = htons(static_cast<uint16_t>(sizeof(UDPHeader) + std::get<1>(payload)));
-						
+
 			headerUDP.checksum = ipChecksumAdd(headerUDP.checksum, ipChecksum(reinterpret_cast<uint8_t*>(&headerIPV4.src), sizeof(uint32_t) * 2));
 			headerUDP.checksum = ipChecksumAdd(headerUDP.checksum, headerIPV4.protocol << 8);
 			headerUDP.checksum = ipChecksumAdd(headerUDP.checksum, headerUDP.length);
@@ -282,7 +283,7 @@ namespace la::utils
 			uint8_t dst[16];
 		};
 #pragma pack()
-		
+
 		UDPHeader headerUDP;
 		IPV6Header headerIPV6;
 		std::memset(&headerUDP, 0, sizeof(UDPHeader));
@@ -327,7 +328,7 @@ namespace la::utils
 			headerUDP.src_port = htons(srcPort);
 			headerUDP.dst_port = htons(dstPort);
 			headerUDP.length = htons(static_cast<uint16_t>(sizeof(UDPHeader) + std::get<1>(payload)));
-			
+
 			headerUDP.checksum = ipChecksumAdd(headerUDP.checksum, ipChecksum(reinterpret_cast<uint8_t*>(&headerIPV6.src), 32));
 			headerUDP.checksum = ipChecksumAdd(headerUDP.checksum, headerIPV6.nexthdr << 8);
 			headerUDP.checksum = ipChecksumAdd(headerUDP.checksum, headerUDP.length);

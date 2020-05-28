@@ -3,7 +3,11 @@
 #if defined(_WIN32) || defined(WIN32)
 	#include <windows.h>
 #else
+	#include <fcntl.h>
+	#include <unistd.h>
 	#include <sys/mman.h>
+	#include <sys/stat.h>
+	#include <sys/types.h>
 #endif
 
 #include <filesystem>

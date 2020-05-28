@@ -128,6 +128,8 @@ namespace la
 			translationCtx.output = jLine.dump(-1, '\t', false, nlohmann::detail::error_handler_t::replace);
 			return true;
 		}
+		default:
+			break;
 		}
 
 		//reaching this point, we have to translate (we *can* more than one translator for the same flavor)

@@ -30,7 +30,7 @@ namespace la
 			for (auto curIndex : execs)
 			{
 				assert(lastIndex <= curIndex);
-				
+
 				if (lastIndex < curIndex) //avoid storing empty executions
 					ranges.push_back({ lastIndex, curIndex });
 
@@ -346,7 +346,7 @@ namespace la
 					LinesTools::FilterCollection filter{
 						LinesTools::FilterParam<LinesTools::FilterType::Tag, std::string_view>("COMLib.Scheduler") };
 
-					auto linesProcessed = linesTools.windowIterate({ execRange.start, execRange.end }, filter, [&execution](size_t, LogLine line, size_t lineIndex)
+					[[maybe_unused]] auto linesProcessed = linesTools.windowIterate({ execRange.start, execRange.end }, filter, [&execution](size_t, LogLine line, size_t lineIndex)
 					{
 						TaskStep taskStep{ TaskStep::Unknown };
 						{
@@ -535,7 +535,7 @@ namespace la
 			struct {
 				std::regex extractCallID{ R"(Call-ID: (.*))", std::regex::ECMAScript | std::regex::icase };
 				std::regex extractCSeq{ R"(CSeq: .+ (.+))", std::regex::ECMAScript | std::regex::icase };
-				
+
 				std::regex matchTX{ R"(\.TX \d+ bytes )", std::regex::ECMAScript | std::regex::icase };
 				std::regex matchRX{ R"(\.RX \d+ bytes )", std::regex::ECMAScript | std::regex::icase };
 
@@ -556,7 +556,7 @@ namespace la
 				LinesTools::FilterParam<LinesTools::FilterType::LogLevel, LogLevel>(LogLevel::Debug),
 				LinesTools::FilterParam<LinesTools::FilterType::Tag, std::string_view>("COMLib.PJSIP"),
 				LinesTools::FilterParam<LinesTools::FilterType::Msg, std::string_view, LogLine::MatchType::Contains>("pjsua_core.c") };
-			
+
 			//find all executions
 			for (const auto& execRange : toolRetrieveAllExecutions(linesTools))
 			{

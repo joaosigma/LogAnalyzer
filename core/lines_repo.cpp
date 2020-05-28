@@ -273,7 +273,7 @@ namespace la
 				auto& jEndpoints = jNewPacket["endpoints"];
 				jEndpoints.push_back(srcAddress);
 				jEndpoints.push_back(dstAddress);
-				
+
 				auto& jLine = jNewPacket["line"];
 				jLine["index"] = lineContent.lineIndex;
 				jLine["offset"] = lineContent.contentOffset;
@@ -458,7 +458,7 @@ namespace la
 
 		return true;
 	}
-	
+
 	bool LinesRepo::exportCommandNetworkPackets(ExportOptions options, std::string_view commandResult) const
 	{
 		if (options.filePath.empty() || commandResult.empty())
