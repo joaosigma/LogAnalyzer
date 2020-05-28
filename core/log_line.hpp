@@ -1,6 +1,7 @@
 #ifndef LA_LOG_LINE_HPP
 #define LA_LOG_LINE_HPP
 
+#include <string>
 #include <cstdint>
 #include <charconv>
 #include <string_view>

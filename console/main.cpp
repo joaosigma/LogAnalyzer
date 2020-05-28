@@ -141,6 +141,8 @@ namespace
 		}
 
 		return true;
+#else
+		return true;
 #endif
 	}
 

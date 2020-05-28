@@ -34,7 +34,7 @@ namespace la
             std::string_view newValue;
             if constexpr (std::is_same_v<TMatchType, std::string_view>)
             {
-                newValue = matchTranslator(std::string_view{ match[1].first, match[1].second - match[1].first });
+                newValue = matchTranslator(std::string_view{ match[1].first, static_cast<size_t>(match[1].second - match[1].first) });
                 if (newValue.empty())
                     return false;
             }
@@ -90,8 +90,8 @@ namespace la
                 (line.checkSectionMethod<LogLine::MatchType::EndsWith>("onUpdateMessageState") && line.checkSectionMsg<LogLine::MatchType::Exact>("Message state updated")) ||
                 (line.checkSectionMethod<LogLine::MatchType::EndsWith>("onSendPendingMessagesCompleted") && line.checkSectionMsg<LogLine::MatchType::Exact>("Send pending messages completed")) ||
                 (line.checkSectionMethod<LogLine::MatchType::EndsWith>("onNotificationResponse") && line.checkSectionMsg<LogLine::MatchType::Exact>("Message Notification Response")));
-            validLine = validLine || line.checkSectionTag<LogLine::MatchType::Exact>("COMLib.Sync.CMSProducer") && line.checkSectionMethod<LogLine::MatchType::EndsWith>("processNewIMDN") && (
-                line.checkSectionMsg<LogLine::MatchType::Exact>("message notified") || line.checkSectionMsg<LogLine::MatchType::Exact>("message state updated") || line.checkSectionMsg<LogLine::MatchType::Exact>("sending notification"));
+            validLine = validLine || (line.checkSectionTag<LogLine::MatchType::Exact>("COMLib.Sync.CMSProducer") && line.checkSectionMethod<LogLine::MatchType::EndsWith>("processNewIMDN") && (
+                line.checkSectionMsg<LogLine::MatchType::Exact>("message notified") || line.checkSectionMsg<LogLine::MatchType::Exact>("message state updated") || line.checkSectionMsg<LogLine::MatchType::Exact>("sending notification")));
             validLine = validLine || (line.checkSectionTag<LogLine::MatchType::Exact>("COMLib.GroupChatController") && line.checkSectionMethod<LogLine::MatchType::EndsWith>("onGroupChatMessageUpdated") && line.checkSectionMsg<LogLine::MatchType::Exact>("Chat message updated"));
             validLine = validLine || (line.checkSectionTag<LogLine::MatchType::Exact>("COMLib.FileTransferController.HTTPFileTransfer") && line.checkSectionMethod<LogLine::MatchType::EndsWith>("onChatMessageSynced") && line.checkSectionMsg<LogLine::MatchType::Exact>(""));
             validLine = validLine || (line.checkSectionTag<LogLine::MatchType::Exact>("COMLib.ChatController.SMSoIP") && (
