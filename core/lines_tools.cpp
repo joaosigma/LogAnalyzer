@@ -12,83 +12,47 @@ namespace la
 
 	LinesTools::SearchResult LinesTools::windowSearch(LineIndexRange targetRange, size_t startCharacterIndex, const std::function<const char* (const char*, const char*)>& cbSearch) const
 	{
-		if (m_fileLineRanges.empty() || (targetRange.start >= targetRange.end))
+		if (targetRange.empty())
 			return {};
 
-		bool startGroupFound{ false };
-		for (const auto& curLineRange : m_fileLineRanges)
+		//as an optimization, do the first loop manually to avoid the check of "startCharacterIndex"
+		if (startCharacterIndex > 0)
 		{
-			//if we are already outside the range end limit, no point in going
-			if (curLineRange.start >= targetRange.end)
-				break;
+			auto lineDataStart = m_lines[targetRange.start].data.start + startCharacterIndex;
+			auto lineDataEnd = m_lines[targetRange.start].data.end;
 
-			const char* lineDataStart, * lineDataEnd;
-			std::vector<LogLine>::const_iterator lineStart, lineEnd;
-
-			//have we reached the right group?
-			if (!startGroupFound && ((targetRange.start < curLineRange.start) || (targetRange.start >= curLineRange.end)))
-				continue;
-
-			//calculate some pointers
-			if (!startGroupFound)
+			if (lineDataStart < lineDataEnd)
 			{
-				assert((targetRange.start >= curLineRange.start) && (targetRange.start < curLineRange.end));
-				lineStart = m_lines.begin() + targetRange.start;
-				lineEnd = m_lines.begin() + curLineRange.end - 1;
+				auto targetPtr = cbSearch(lineDataStart, lineDataEnd);
+				if (targetPtr && (targetPtr < lineDataEnd))
+				{
+					SearchResult result{
+						true,
+						targetRange.start,
+						static_cast<size_t>(targetPtr - m_lines[targetRange.start].data.start)
+					};
 
-				lineDataStart = lineStart->data.start + startCharacterIndex;
-				lineDataEnd = lineEnd->data.end;
-				if (lineDataStart > lineDataEnd)
-					lineDataStart = lineDataEnd;
-
-				//we can reset this in case we need to search in the next group
-				startGroupFound = true;
-			}
-			else
-			{
-				lineStart = m_lines.begin() + curLineRange.start;
-				lineEnd = m_lines.begin() + curLineRange.end - 1;
-
-				lineDataStart = lineStart->data.start;
-				lineDataEnd = lineEnd->data.end;
+					return result;
+				}
 			}
 
-			//this can happend if the last search coincides with the end of the group
-			if (lineDataStart == lineDataEnd)
-				continue;
+			targetRange.start++;
+		}
 
-			//this group is valid to try and find the text
+		for (; targetRange.start < targetRange.end; targetRange.start++)
+		{
+			auto lineDataStart = m_lines[targetRange.start].data.start;
+			auto lineDataEnd = m_lines[targetRange.start].data.end;
+
 			auto targetPtr = cbSearch(lineDataStart, lineDataEnd);
 			if (!targetPtr || (targetPtr == lineDataEnd))
 				continue;
 
-			//found it!
-
-			std::vector<LogLine>::const_iterator itLine; //calculate in which line we found it
-			{
-				LogLine aux;
-				aux.data.start = targetPtr;
-				itLine = std::lower_bound(lineStart, lineEnd, aux, [](const auto& a, const auto& b) { return (a.data.start < b.data.start); });
-			}
-
-			//remember that lineEnd is actually valid, so don't check it
-
-			if (itLine->data.start > targetPtr)
-				itLine--;
-
-			assert((targetPtr >= itLine->data.start) && (targetPtr < itLine->data.end)); //and where in the content the data starts
-
-			//calculate indices
-			SearchResult result{
+			return SearchResult{
 				true,
-				static_cast<size_t>(std::distance(m_lines.begin(), itLine)),
-				static_cast<size_t>(std::distance(itLine->data.start, targetPtr))
+				targetRange.start,
+				static_cast<size_t>(targetPtr - m_lines[targetRange.start].data.start)
 			};
-
-			if (result.lineIndex >= targetRange.end) //ignore result if we are outside range limit
-				return {};
-
-			return result;
 		}
 
 		return {};

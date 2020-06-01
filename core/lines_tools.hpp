@@ -116,9 +116,8 @@ namespace la
 		};
 
 	public:
-		LinesTools(const std::vector<LogLine>& lines, const std::vector<LineIndexRange>& fileLineRanges) noexcept
+		LinesTools(const std::vector<LogLine>& lines) noexcept
 			: m_lines{ lines }
-			, m_fileLineRanges{ fileLineRanges }
 		{ }
 
 		const std::vector<LogLine>& lines() const;
@@ -201,7 +200,6 @@ namespace la
 
 	private:
 		const std::vector<LogLine>& m_lines;
-		const std::vector<LineIndexRange>& m_fileLineRanges;
 	};
 }
 

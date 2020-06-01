@@ -28,6 +28,8 @@ namespace
 		} cmd;
 
 		la::LinesRepo::FindContext search;
+
+		std::vector<std::unique_ptr<la::LinesRepo>> repoStack;
 	};
 
 	std::vector<std::string> parseParams(std::string_view params)
@@ -265,10 +267,11 @@ int main(int argc, char* argv[])
 	{
 		//prompt
 		{
+			auto pStack = fmt::format("\x1B[34m[{:*>{}}]", "", ctx.repoStack.size());
 			auto pSearch = ctx.search.isValid() ? fmt::format("\x1B[92msearch: \x1B[32m\"{}\" ", ctx.search.query()) : "";
 			auto pCmd = !ctx.cmd.result.empty() ? fmt::format("\x1B[92mcmd: \x1B[32m\"{}\" ", ctx.cmd.name) : "";
-
-			std::cout << fmt::format("\x1B[92mtag: \x1B[32m\"{}\" {}{}\x1B[31m\\>\x1B[0m ", ctx.tag, pSearch, pCmd);
+			
+			std::cout << fmt::format("{} \x1B[92mtag: \x1B[32m\"{}\" {}{}\x1B[31m\\>\x1B[0m ", pStack, ctx.tag, pSearch, pCmd);
 		}
 
 		args.clear();
@@ -409,6 +412,47 @@ int main(int argc, char* argv[])
 			continue;
 		}
 
+		if ((params.size() == 1) && ((params[0] == "push") || (params[0] == "pop")))
+		{
+			if (params[0] == "push")
+			{
+				if (ctx.cmd.result.empty())
+				{
+					std::cout << "no command results available" << std::endl;
+					continue;
+				}
+
+				auto newRepo = la::LinesRepo::initRepoFromCommnand(*repoLines.get(), ctx.cmd.result);
+				if (!newRepo)
+				{
+					std::cerr << "unable to create new repo from command results" << std::endl;
+					continue;
+				}
+
+				ctx.repoStack.push_back(std::move(repoLines));
+				repoLines = std::exchange(newRepo, nullptr);
+
+				ctx.cmd.name.clear();
+				ctx.cmd.result.clear();
+				ctx.search = la::LinesRepo::FindContext{};
+
+				std::cout << fmt::format("new repo activated (with a total of {0} lines)", repoLines->numLines()) << std::endl;
+			}
+			else
+			{
+				if (ctx.repoStack.empty())
+				{
+					std::cout << "there's no repo in stack" << std::endl;
+					continue;
+				}
+
+				repoLines = std::exchange(ctx.repoStack.back(), nullptr);
+				ctx.repoStack.pop_back();
+			}
+
+			continue;
+		}
+
 		if ((params.size() >= 2) && (params.size() <= 3) && ((params[0] == "ex") || (params[0] == "export")))
 		{
 			if (ctx.cmd.result.empty())
@@ -530,6 +574,7 @@ int main(int argc, char* argv[])
 			std::cout << "\t l[ist] - list available commands" << std::endl;
 			std::cout << "\t e[xec] - execute a command" << std::endl;
 			std::cout << "\t p[rint] - print stuff" << std::endl;
+			std::cout << "\t push/pop - push or pop repo using current command result" << std::endl;
 			std::cout << "\t ex[port] - export data to a file" << std::endl;
 			std::cout << "\t exportAll - export data to a file" << std::endl;
 			std::cout << "\t f[ind] - find a specific text" << std::endl;
