@@ -50,8 +50,43 @@ namespace la
 		return std::unique_ptr<LinesRepo>{ new LinesRepo(std::move(repoFiles)) };
 	}
 
-	LinesRepo::~LinesRepo() noexcept
-	{ }
+	std::unique_ptr<LinesRepo> LinesRepo::initRepoFromCommnand(const LinesRepo& sourceRepo, std::string_view commandResult)
+	{
+		if (commandResult.empty())
+			return nullptr;
+
+		std::vector<LogLine> logLines;
+		{
+			auto jRoot = nlohmann::json::parse(commandResult);
+			if (!jRoot.is_object() || !jRoot.contains("linesIndices") || !jRoot["linesIndices"].is_array())
+				return 0;
+
+			bool firstIndexGroup{ true };
+			for (const auto& jIndexGroup : jRoot["linesIndices"])
+			{
+				if (!jIndexGroup.is_object() || !jIndexGroup.contains("indices"))
+					continue;
+
+				auto& jIndices = jIndexGroup["indices"];
+				if (!jIndices.is_array() || jIndices.empty())
+					continue;
+
+				for (const auto& index : jIndices)
+				{
+					auto value = index.get<size_t>();
+					if ((value < 0) || (value >= sourceRepo.m_lines.size()))
+						continue;
+
+					logLines.push_back(sourceRepo.m_lines[value]);
+				}
+			}
+		}
+
+		if (logLines.empty())
+			return nullptr;
+		
+		return std::unique_ptr<LinesRepo>{ new LinesRepo(sourceRepo, std::move(logLines)) };
+	}
 
 	size_t LinesRepo::numFiles() const noexcept
 	{
@@ -321,41 +356,19 @@ namespace la
 		count = std::min(m_lines.size() - indexStart, count);
 
 		auto path = std::filesystem::u8path(options.filePath);
-		std::ofstream out(path.native().c_str(), std::ios::out | std::ios::binary | std::ios::ate | (options.appendToFile ? std::ios::app : std::ios::trunc));
+		std::ofstream out(path.native().c_str(), std::ios::out | std::ios::binary | std::ios::ate | (options.appendToFile ? 0 : std::ios::trunc));
 		if (!out.good())
 			return false;
 
-		//as an optimization (in case of Raw translation type), we can export each file chunk all at once
+		//as an optimization (in case of Raw translation type)
 		if (options.translationType == TranslatorsRepo::Type::Raw)
 		{
-			bool startGroupFound{ false };
-			for (const auto& group : m_fileLineRanges)
+			for (; count > 0; count--, indexStart++)
 			{
-				if (!startGroupFound && ((indexStart < group.start) || (indexStart >= group.end)))
-					continue;
+				const auto& line = m_lines[indexStart];
 
-				if (startGroupFound)
-					indexStart = group.start;
-				else
-					startGroupFound = true;
-
-				if (count <= (group.end - indexStart)) //if what is still left to write is in this entire group
-				{
-					auto bytesToWrite = static_cast<std::streamsize>(m_lines[indexStart + count - 1].data.end - m_lines[indexStart].data.start);
-					out.write(m_lines[indexStart].data.start, bytesToWrite);
-					out.write("\n", 1);
-
-					count = 0;
-					break;
-				}
-
-				//write until the end of the group and move on to the next
-
-				auto bytesToWrite = static_cast<std::streamsize>(m_lines[group.end - 1].data.end - m_lines[indexStart].data.start);
-				out.write(m_lines[indexStart].data.start, bytesToWrite);
-				out.write("\n", 1);
-
-				count -= (group.end - indexStart);
+				out.write(line.data.start, static_cast<size_t>(line.data.end - line.data.start));
+				out.put('\n');
 			}
 
 			assert(count == 0);
@@ -382,6 +395,7 @@ namespace la
 			out.write("\n", 1);
 		}
 
+		assert(count == 0);
 		return true;
 	}
 
@@ -395,7 +409,7 @@ namespace la
 			return false;
 
 		auto path = std::filesystem::u8path(options.filePath);
-		std::ofstream out(path.native().c_str(), std::ios::out | std::ios::binary | std::ios::ate | (options.appendToFile ? std::ios::app : std::ios::trunc));
+		std::ofstream out(path.native().c_str(), std::ios::out | std::ios::binary | std::ios::ate | (options.appendToFile ? 0 : std::ios::trunc));
 		if (!out.good())
 			return false;
 
@@ -469,7 +483,7 @@ namespace la
 			return false;
 
 		auto path = std::filesystem::u8path(options.filePath);
-		std::ofstream out(path.native().c_str(), std::ios::out | std::ios::binary | std::ios::ate | (options.appendToFile ? std::ios::app : std::ios::trunc));
+		std::ofstream out(path.native().c_str(), std::ios::out | std::ios::binary | std::ios::ate | (options.appendToFile ? 0 : std::ios::trunc));
 		if (!out.good())
 			return false;
 
@@ -527,8 +541,8 @@ namespace la
 		return true;
 	}
 
-	LinesRepo::LinesRepo(std::unique_ptr<FilesRepo> repoFiles) noexcept
-		: m_linesTools{ m_lines, m_fileLineRanges }
+	LinesRepo::LinesRepo(std::shared_ptr<FilesRepo> repoFiles)
+		: m_linesTools{ m_lines }
 		, m_repoFiles{ std::move(repoFiles) }
 	{
 		m_repoFiles->iterateFiles([this](const void* data, size_t size)
@@ -547,14 +561,17 @@ namespace la
 		});
 	}
 
+	LinesRepo::LinesRepo(const LinesRepo& sourceRepo, std::vector<LogLine> logLines)
+		: m_linesTools{ m_lines }
+		, m_lines{ std::move(logLines) }
+		, m_cmds{ sourceRepo.m_cmds } //can reuse all the same commands
+		, m_repoFiles{ sourceRepo.m_repoFiles } //store a reference to the files
+	{
+
+	}
+
 	void LinesRepo::processData(const void* data, size_t dataSize)
 	{
-		size_t startIndex = m_lines.size();
-
-		auto linesAdded = FlavorsRepo::processFileData(m_repoFiles->flavor(), data, dataSize, m_lines);
-		if (linesAdded <= 0)
-			return;
-
-		m_fileLineRanges.push_back({ startIndex, startIndex + linesAdded });
+		FlavorsRepo::processFileData(m_repoFiles->flavor(), data, dataSize, m_lines);
 	}
 }

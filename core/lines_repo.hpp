@@ -92,8 +92,10 @@ namespace la
 		static std::unique_ptr<LinesRepo> initRepoFolder(FlavorsRepo::Type type, std::string_view folderPath);
 		static std::unique_ptr<LinesRepo> initRepoFolder(FlavorsRepo::Type type, std::string_view folderPath, std::string_view fileNameFilterRegex);
 
+		static std::unique_ptr<LinesRepo> initRepoFromCommnand(const LinesRepo& sourceRepo, std::string_view commandResult);
+
 	public:
-		~LinesRepo() noexcept;
+		~LinesRepo() = default;
 
 		LinesRepo(const LinesRepo&) = delete;
 		LinesRepo& operator=(const LinesRepo&) = delete;
@@ -120,18 +122,18 @@ namespace la
 		bool exportCommandNetworkPackets(ExportOptions options, std::string_view commandResult) const;
 
 	private:
-		LinesRepo(std::unique_ptr<FilesRepo> repoFiles) noexcept;
+		LinesRepo(std::shared_ptr<FilesRepo> repoFiles);
+		LinesRepo(const LinesRepo& sourceRepo, std::vector<LogLine> logLines);
 
 		void processData(const void* data, size_t dataSize);
 
 	private:
 		LinesTools m_linesTools;
 		std::vector<LogLine> m_lines;
-		std::vector<LinesTools::LineIndexRange> m_fileLineRanges;
 
 		std::unordered_map<std::string_view, std::vector<CommandsRepo::CommandInfo>> m_cmds;
 
-		std::unique_ptr<FilesRepo> m_repoFiles;
+		std::shared_ptr<FilesRepo> m_repoFiles;
 	};
 }
 
