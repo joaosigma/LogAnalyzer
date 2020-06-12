@@ -3,6 +3,7 @@
 
 #include "log_line.hpp"
 
+#include <regex>
 #include <vector>
 #include <optional>
 #include <functional>
@@ -152,7 +153,9 @@ namespace la
 		SearchResult windowSearch(LineIndexRange targetRange, size_t startCharacterIndex, const std::function<const char* (const char*, const char*)>& cbSearch) const;
 
 		std::vector<size_t> windowFindAll(LineIndexRange targetRange, std::string_view contentQuery) const;
+		std::vector<size_t> windowFindAll(LineIndexRange targetRange, const std::regex& contentQuery) const;
 		std::optional<size_t> windowFindFirst(LineIndexRange targetRange, std::string_view contentQuery) const;
+		std::optional<size_t> windowFindFirst(LineIndexRange targetRange, const std::regex& contentQuery) const;
 
 		template<class TFilterCb, class... TParams>
 		size_t iterateBackwards(size_t lineIndexStart, FilterCollection<TParams...> filter, TFilterCb&& filterCb) const

@@ -68,21 +68,28 @@ namespace la
 				}
 			}
 
-			//gather all waiting events
+			//gather all non execution or finishing events
 			{
-				static std::array<std::string_view, 5> Queries{ {
+				static std::array<std::string_view, 10> Queries{ {
 					"| task waiting (sync) | id={}; waiting for=",
 					"| task waiting (time) | id={}; ms=",
 					"| task waiting (task) | id={}; waiting for=",
 					"| task moving on (sync) | id={}; waited for=",
-					"| task moving on (task) | id={}; waited for="
+					"| task moving on (task) | id={}; waited for=",
+					"| task cancelled | id={};",
+					"| scheduler canceled a task that didn't have support to be canceled | id={}; name=",
+					"| canceling task because task is already running | id={}; name=",
+					"| ignoring task remove because task is already running | id={}; name=",
+					"| removed task | id={}; name="
 				} };
-
+				
 				for (const auto& query : Queries)
 				{
-					auto result = linesTools.windowFindFirst({ taskStartLineIndex, taskEndLineIndex }, fmt::format(query, taskId));
-					if (result.has_value() && lines[*result].checkSectionTag<LogLine::MatchType::Exact>("COMLib.Scheduler"))
-						lineIndices.push_back(*result);
+					for (auto curLineIndex : linesTools.windowFindAll({ taskStartLineIndex, taskEndLineIndex }, fmt::format(query, taskId)))
+					{
+						if (lines[curLineIndex].checkSectionTag<LogLine::MatchType::Exact>("COMLib.Scheduler"))
+							lineIndices.push_back(curLineIndex);
+					}
 				}
 			}
 

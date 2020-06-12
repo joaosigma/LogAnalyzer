@@ -80,6 +80,27 @@ namespace la
 		return lineIndices;
 	}
 
+	std::vector<size_t> LinesTools::windowFindAll(LineIndexRange targetRange, const std::regex& contentQuery) const
+	{
+		std::vector<size_t> lineIndices;
+
+		while (true)
+		{
+			auto result = windowSearch(targetRange, 0, [&contentQuery](const char* dataStart, const char* dataEnd)
+			{
+				std::cmatch match;
+				return std::regex_search(dataStart, dataEnd, match, contentQuery) ? match[0].first : nullptr;
+			});
+			if (!result.valid)
+				break;
+
+			targetRange.start = result.lineIndex + 1;
+			lineIndices.push_back(result.lineIndex);
+		}
+
+		return lineIndices;
+	}
+
 	std::optional<size_t> LinesTools::windowFindFirst(LineIndexRange targetRange, std::string_view contentQuery) const
 	{
 		if (contentQuery.empty())
@@ -88,6 +109,19 @@ namespace la
 		std::boyer_moore_searcher bmSearcher(contentQuery.begin(), contentQuery.end());
 
 		auto result = windowSearch(targetRange, 0, [&bmSearcher](const char* dataStart, const char* dataEnd) { return std::search(dataStart, dataEnd, bmSearcher); });
+		if (!result.valid)
+			return std::nullopt;
+
+		return result.lineIndex;
+	}
+
+	std::optional<size_t> LinesTools::windowFindFirst(LineIndexRange targetRange, const std::regex& contentQuery) const
+	{
+		auto result = windowSearch(targetRange, 0, [&contentQuery](const char* dataStart, const char* dataEnd)
+		{
+			std::cmatch match;
+			return std::regex_search(dataStart, dataEnd, match, contentQuery) ? match[0].first : nullptr;
+		});
 		if (!result.valid)
 			return std::nullopt;
 
