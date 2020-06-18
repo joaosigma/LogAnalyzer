@@ -110,14 +110,14 @@ laStrFixedUTF8 la_str_fixed_init()
 	return str;
 }
 
-laStrFixedUTF8 la_str_fixed_init_str(laStrUTF8* str)
+laStrFixedUTF8 la_str_fixed_init_str(laStrUTF8 str)
 {
-	if (!str)
+	if (!str.data || (str.size <= 0))
 		return la_str_fixed_init();
 
 	laStrFixedUTF8 strFixed;
-	strFixed.data = str->data;
-	strFixed.size = str->size;
+	strFixed.data = str.data;
+	strFixed.size = str.size;
 
 	return strFixed;
 }
@@ -129,7 +129,7 @@ laStrFixedUTF8 la_str_fixed_init_cstr(const char* cstr)
 
 	laStrFixedUTF8 str;
 	str.data = cstr;
-	str.size = std::strlen(cstr);
+	str.size = static_cast<int>(std::strlen(cstr));
 
 	return str;
 }
@@ -174,7 +174,7 @@ laStrUTF8* la_list_files(laFlavorType flavor, laStrFixedUTF8 folderPath, int* nu
 	if (!strList)
 		return nullptr;
 
-	*numFiles = files.size();
+	*numFiles = static_cast<int>(files.size());
 
 	int i = 0;
 	for (const auto& str : files)
@@ -224,13 +224,12 @@ wclLinesRepo* la_init_repo_command(wclLinesRepo* repo, laStrFixedUTF8 commandRes
 	return (newRepo ? reinterpret_cast<wclLinesRepo*>(newRepo.release()) : nullptr);
 }
 
-void la_repo_destroy(wclLinesRepo** repo)
+void la_repo_destroy(wclLinesRepo* repo)
 {
 	if (!repo)
 		return;
 
-	delete reinterpret_cast<la::LinesRepo*>(*repo);
-	*repo = nullptr;
+	delete reinterpret_cast<la::LinesRepo*>(repo);
 }
 
 int la_repo_num_files(wclLinesRepo* repo)
@@ -263,7 +262,7 @@ wclFindContext* la_repo_search_text(wclLinesRepo* repo, laStrFixedUTF8 query, la
 		return nullptr;
 
 	auto fctx = reinterpret_cast<la::LinesRepo*>(repo)->searchText({ query.data, static_cast<size_t>(query.size) }, convertSearchOptions(searchOptions));
-	
+
 	auto wrapper = new la::LinesRepo::FindContext(std::move(fctx));
 	return (wrapper ? reinterpret_cast<wclFindContext*>(wrapper) : nullptr);
 }
@@ -288,13 +287,12 @@ void la_repo_search_next(wclLinesRepo* repo, wclFindContext* ctx)
 	*nCtx = reinterpret_cast<la::LinesRepo*>(repo)->searchNext(*nCtx);
 }
 
-void la_repo_search_destroy(wclFindContext** ctx)
+void la_repo_search_destroy(wclFindContext* ctx)
 {
 	if (!ctx)
 		return;
 
-	delete reinterpret_cast<la::LinesRepo::FindContext*>(*ctx);
-	*ctx = nullptr;
+	delete reinterpret_cast<la::LinesRepo::FindContext*>(ctx);
 }
 
 laStrUTF8 la_repo_retrieve_line_content(wclLinesRepo* repo, int lineIndex, laTranslatorType translatorType)

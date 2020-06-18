@@ -73,7 +73,7 @@ LA_API_VISIBILITY laStrUTF8 la_str_init_length(int size);
 LA_API_VISIBILITY void la_str_destroy(laStrUTF8* str);
 
 LA_API_VISIBILITY laStrFixedUTF8 la_str_fixed_init();
-LA_API_VISIBILITY laStrFixedUTF8 la_str_fixed_init_str(laStrUTF8* str);
+LA_API_VISIBILITY laStrFixedUTF8 la_str_fixed_init_str(laStrUTF8 str);
 LA_API_VISIBILITY laStrFixedUTF8 la_str_fixed_init_cstr(const char* cstr);
 
 LA_API_VISIBILITY int la_find_ctx_valid(const wclFindContext* ctx);
@@ -93,7 +93,7 @@ LA_API_VISIBILITY wclLinesRepo* la_init_repo_folder_filter(laFlavorType flavor, 
 
 LA_API_VISIBILITY wclLinesRepo* la_init_repo_command(wclLinesRepo* repo, laStrFixedUTF8 commandResult);
 
-LA_API_VISIBILITY void la_repo_destroy(wclLinesRepo** repo);
+LA_API_VISIBILITY void la_repo_destroy(wclLinesRepo* repo);
 
 /********
 ** Repo operations
@@ -103,11 +103,10 @@ LA_API_VISIBILITY int la_repo_num_files(wclLinesRepo* repo);
 LA_API_VISIBILITY int la_repo_num_lines(wclLinesRepo* repo);
 LA_API_VISIBILITY laFlavorType la_repo_flavor(wclLinesRepo* repo);
 
-
 LA_API_VISIBILITY wclFindContext* la_repo_search_text(wclLinesRepo* repo, laStrFixedUTF8 query, laSearchOptions searchOptions);
 LA_API_VISIBILITY wclFindContext* la_repo_search_text_regex(wclLinesRepo* repo, laStrFixedUTF8 query, laSearchOptions searchOptions);
 LA_API_VISIBILITY void la_repo_search_next(wclLinesRepo* repo, wclFindContext* ctx);
-LA_API_VISIBILITY void la_repo_search_destroy(wclFindContext** ctx);
+LA_API_VISIBILITY void la_repo_search_destroy(wclFindContext* ctx);
 
 LA_API_VISIBILITY laStrUTF8 la_repo_retrieve_line_content(wclLinesRepo* repo, int lineIndex, laTranslatorType translatorType);
 
