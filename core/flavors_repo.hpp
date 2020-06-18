@@ -32,7 +32,7 @@ namespace la
 			{
 				std::string_view filter; //what types of files are valid
 				std::string_view filterSort; //what part of the file should be used to order said file
-				bool reverseSort; //reverse the order of files
+				bool reverseSort{ false }; //reverse the order of files
 				std::string_view lineIdentification; //regex to identify if the first line of a file corresponds to this type
 			} filesFilter;
 		};
