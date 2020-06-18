@@ -214,7 +214,71 @@ namespace la
 		return (TranslatorsRepo::translate(type, flavor(), line, translationCtx) ? translationCtx.output : "");
 	}
 
-	std::string LinesRepo::listAvailableCommands() const
+	std::string LinesRepo::getSummary() const
+	{
+		auto jSummary = nlohmann::json::object();
+
+		jSummary["timeRange"] = { m_lines.front().timestamp, m_lines.back().timestamp };
+		jSummary["numLines"] = m_lines.size();
+
+		{
+			std::vector<size_t> lineIndices;
+			{
+				LinesTools::FilterCollection filter{
+					LinesTools::FilterParam<LinesTools::FilterType::LogLevel, LogLevel>(LogLevel::Warn) };
+
+				m_linesTools.windowIterate({ 0, m_lines.size() }, filter, [&lineIndices](size_t, LogLine, size_t lineIndex)
+				{
+					lineIndices.push_back(lineIndex);
+					return true;
+				});
+
+				jSummary["warningsLinesIndex"] = lineIndices;
+			}
+
+			lineIndices.clear();
+			{
+				LinesTools::FilterCollection filter{
+					LinesTools::FilterParam<LinesTools::FilterType::LogLevel, LogLevel>(LogLevel::Error) };
+
+				m_linesTools.windowIterate({ 0, m_lines.size() }, filter, [&lineIndices](size_t, LogLine, size_t lineIndex)
+				{
+					lineIndices.push_back(lineIndex);
+					return true;
+				});
+
+				jSummary["errorsLinesIndex"] = lineIndices;
+			}
+		}
+
+		{
+			std::set<int32_t> uniqueThreads;
+			for (const auto& line : m_lines)
+				uniqueThreads.insert(line.threadId);
+
+			jSummary["threadIds"] = uniqueThreads;
+		}
+
+		{
+			std::set<std::string_view> uniqueThreads;
+			for (const auto& line : m_lines)
+				uniqueThreads.insert(line.getSectionThreadName());
+
+			jSummary["threadNames"] = uniqueThreads;
+		}
+
+		{
+			std::set<std::string_view> uniqueTags;
+			for (const auto& line : m_lines)
+				uniqueTags.insert(line.getSectionTag());
+
+			jSummary["tags"] = uniqueTags;
+		}
+
+		return jSummary.dump();
+	}
+
+	std::string LinesRepo::getAvailableCommands() const
 	{
 		auto jTags = nlohmann::json::array();
 		for (const auto& [tag, cmds] : m_cmds)

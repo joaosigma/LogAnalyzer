@@ -304,12 +304,21 @@ laStrUTF8 la_repo_retrieve_line_content(wclLinesRepo* repo, int lineIndex, laTra
 	return convertStr(res);
 }
 
-laStrUTF8 la_repo_list_available_commands(wclLinesRepo* repo)
+laStrUTF8 la_repo_get_summary(wclLinesRepo* repo)
 {
 	if (!repo)
 		return la_str_init();
 
-	auto res = reinterpret_cast<la::LinesRepo*>(repo)->listAvailableCommands();
+	auto res = reinterpret_cast<la::LinesRepo*>(repo)->getSummary();
+	return convertStr(res);
+}
+
+laStrUTF8 la_repo_get_available_commands(wclLinesRepo* repo)
+{
+	if (!repo)
+		return la_str_init();
+
+	auto res = reinterpret_cast<la::LinesRepo*>(repo)->getAvailableCommands();
 	return convertStr(res);
 }
 
