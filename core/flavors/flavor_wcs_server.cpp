@@ -53,7 +53,7 @@ namespace la::flavors
 
 			//read the thread name
 			{
-				line.sectionThreadName.offset = walker - line.data.start;
+				line.sectionThreadName.offset = static_cast<uint16_t>(walker - line.data.start);
 				line.sectionThreadName.size = 0;
 
 				while ((walker < walkerEnd) && (walker[0] != '|'))
@@ -62,41 +62,41 @@ namespace la::flavors
 				if (walker >= walkerEnd)
 					return false;
 
-				line.sectionThreadName.size = walker - line.data.start - line.sectionThreadName.offset;
+				line.sectionThreadName.size = static_cast<uint32_t>(walker - line.data.start - line.sectionThreadName.offset);
 
 				walker++; //ignore '|'
 			}
 
 			//read the tag
 			{
-				line.sectionTag.offset = walker - line.data.start;
+				line.sectionTag.offset = static_cast<uint16_t>(walker - line.data.start);
 				line.sectionTag.size = 0;
 
 				while ((walker < walkerEnd) && (walker[0] != '|'))
 					walker++;
 
-				line.sectionTag.size = walker - line.data.start - line.sectionTag.offset;
+				line.sectionTag.size = static_cast<uint32_t>(walker - line.data.start - line.sectionTag.offset);
 
 				walker++; //ignore '|'
 			}
 
 			//read the method
 			{
-				line.sectionMethod.offset = walker - line.data.start;
+				line.sectionMethod.offset = static_cast<uint16_t>(walker - line.data.start);
 				line.sectionMethod.size = 0;
 
 				while ((walker < walkerEnd) && (walker[0] != '|'))
 					walker++;
 
-				line.sectionMethod.size = walker - line.data.start - line.sectionMethod.offset;
+				line.sectionMethod.size = static_cast<uint32_t>(walker - line.data.start - line.sectionMethod.offset);
 
 				walker++; //ignore '|'
 			}
 
 			//read the message
 			{
-				line.sectionMsg.offset = walker - line.data.start;
-				line.sectionMsg.size = walkerEnd - walker; //end of the line
+				line.sectionMsg.offset = static_cast<uint16_t>(walker - line.data.start);
+				line.sectionMsg.size = static_cast<uint32_t>(walkerEnd - walker); //end of the line
 			}
 
 			//trim any spaces at the end of each section

@@ -106,13 +106,13 @@ namespace la::flavors
 
 				 //read the tag
 				{
-					line.sectionTag.offset = walker - line.data.start;
+					line.sectionTag.offset = static_cast<uint16_t>(walker - line.data.start);
 					line.sectionTag.size = 0;
 
 					while ((walker < walkerEnd) && (walker[0] != ':'))
 						walker++;
 
-					line.sectionTag.size = walker - line.data.start - line.sectionTag.offset;
+					line.sectionTag.size = static_cast<uint32_t>(walker - line.data.start - line.sectionTag.offset);
 
 					walker++; //ignore ':'
 				}
@@ -123,8 +123,8 @@ namespace la::flavors
 						return false;
 
 					walker++; //skip space
-					line.sectionMsg.offset = walker - line.data.start;
-					line.sectionMsg.size = walkerEnd - walker; //end of the line
+					line.sectionMsg.offset = static_cast<uint16_t>(walker - line.data.start);
+					line.sectionMsg.size = static_cast<uint32_t>(walkerEnd - walker); //end of the line
 				}
 			}
 			else
@@ -136,13 +136,13 @@ namespace la::flavors
 
 				//read the tag
 				{
-					line.sectionTag.offset = walker - line.data.start;
+					line.sectionTag.offset = static_cast<uint16_t>(walker - line.data.start);
 					line.sectionTag.size = 0;
 
 					while ((walker < walkerEnd) && (walker[0] != ':'))
 						walker++;
 
-					line.sectionTag.size = walker - line.data.start - line.sectionTag.offset;
+					line.sectionTag.size = static_cast<uint32_t>(walker - line.data.start - line.sectionTag.offset);
 
 					walker++; //ignore ':'
 				}
@@ -153,13 +153,13 @@ namespace la::flavors
 						return false;
 
 					walker++; //skip space
-					line.sectionMethod.offset = walker - line.data.start;
+					line.sectionMethod.offset = static_cast<uint16_t>(walker - line.data.start);
 					line.sectionMethod.size = 0;
 
 					while ((walker < walkerEnd) && (*walker != '|'))
 						walker++;
 
-					line.sectionMethod.size = walker - line.data.start - line.sectionMethod.offset;
+					line.sectionMethod.size = static_cast<uint32_t>(walker - line.data.start - line.sectionMethod.offset);
 
 					if ((line.sectionMethod.size < 1) || (walker[-1] != ' ')) //last caracter before '|' must be a space
 						return false;
@@ -174,13 +174,13 @@ namespace la::flavors
 						return false;
 
 					walker++; //skip space
-					line.sectionMsg.offset = walker - line.data.start;
+					line.sectionMsg.offset = static_cast<uint16_t>(walker - line.data.start);
 					line.sectionMsg.size = 0;
 
 					while ((walker < walkerEnd) && (walker[0] != '|'))
 						walker++;
 
-					line.sectionMsg.size = walker - line.data.start - line.sectionMsg.offset;
+					line.sectionMsg.size = static_cast<uint32_t>(walker - line.data.start - line.sectionMsg.offset);
 
 					if (walker < walkerEnd) //the message *can* be the last thing in the line
 					{
@@ -199,8 +199,8 @@ namespace la::flavors
 						return false;
 
 					walker++;
-					line.sectionParams.offset = walker - line.data.start;
-					line.sectionParams.size = walkerEnd - walker; //end of the line
+					line.sectionParams.offset = static_cast<uint16_t>(walker - line.data.start);
+					line.sectionParams.size = static_cast<uint32_t>(walkerEnd - walker); //end of the line
 				}
 			}
 

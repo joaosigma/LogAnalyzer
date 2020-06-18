@@ -273,7 +273,7 @@ namespace la
 					auto& last = out.back();
 
 					if ((last.sectionParams.size <= 0) && ((last.data.start + last.sectionMsg.offset + last.sectionMsg.size) == last.data.end))
-						last.sectionMsg.size = line.data.end - last.data.start - last.sectionMsg.offset; //also append to the msg section
+						last.sectionMsg.size = static_cast<uint32_t>(line.data.end - last.data.start - last.sectionMsg.offset); //also append to the msg section
 					last.data.end = line.data.end;
 				}
 
