@@ -112,7 +112,8 @@ namespace la
 
 		std::string retrieveLineContent(size_t lineIndex, TranslatorsRepo::Type type) const;
 
-		std::string listAvailableCommands() const;
+		std::string getSummary() const;
+		std::string getAvailableCommands() const;
 
 		std::string executeCommand(std::string_view tag, std::string_view name) const;
 		std::string executeCommand(std::string_view tag, std::string_view name, std::string_view params) const;

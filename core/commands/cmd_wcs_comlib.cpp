@@ -202,45 +202,7 @@ namespace la
 				return;
 
 			auto& jResult = resultCtx.json();
-			jResult["timeRange"] = { lines.front().timestamp, lines.back().timestamp };
-			jResult["numLines"] = lines.size();
-
-			{
-				LinesTools::FilterCollection filter{
-					LinesTools::FilterParam<LinesTools::FilterType::LogLevel, LogLevel>(LogLevel::Warn) };
-
-				std::vector<size_t> lineIndices;
-				linesTools.windowIterate({ 0, lines.size() }, filter, [&lineIndices](size_t, LogLine, size_t lineIndex)
-				{
-					lineIndices.push_back(lineIndex);
-					return true;
-				});
-
-				jResult["warningsLinesIndex"] = resultCtx.addLineIndices("warnings", lineIndices);
-			}
-
-			{
-				LinesTools::FilterCollection filter{
-					LinesTools::FilterParam<LinesTools::FilterType::LogLevel, LogLevel>(LogLevel::Error) };
-
-				std::vector<size_t> lineIndices;
-				linesTools.windowIterate({ 0, lines.size() }, filter, [&lineIndices](size_t, LogLine, size_t lineIndex)
-				{
-					lineIndices.push_back(lineIndex);
-					return true;
-				});
-
-				jResult["errorsLinesIndex"] = resultCtx.addLineIndices("errors", lineIndices);
-			}
-
-			{
-				std::set<std::string> uniqueTags;
-				for (const auto& line : lines)
-					uniqueTags.insert(std::string{ line.getSectionTag() });
-
-				jResult["tags"] = uniqueTags;
-			}
-
+			
 			{
 				LinesTools::FilterCollection filter{
 					LinesTools::FilterParam<LinesTools::FilterType::Tag, std::string_view>("COMLib.PJSIP") };

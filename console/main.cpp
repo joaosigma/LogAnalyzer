@@ -253,7 +253,7 @@ int main(int argc, char* argv[])
 	Context ctx;
 	{
 		//we can set the tag automatically if only one tag is available
-		auto cmds = repoLines->listAvailableCommands();
+		auto cmds = repoLines->getAvailableCommands();
 		if (!cmds.empty())
 		{
 			auto jTags = nlohmann::json::parse(cmds);
@@ -284,7 +284,7 @@ int main(int argc, char* argv[])
 
 		if ((params.size() == 1) && ((params[0] == "l") || (params[0] == "list")))
 		{
-			auto cmds = repoLines->listAvailableCommands();
+			auto cmds = repoLines->getAvailableCommands();
 			if (cmds.empty())
 			{
 				std::cout << "there are no commands available" << std::endl;

@@ -110,7 +110,8 @@ LA_API_VISIBILITY void la_repo_search_destroy(wclFindContext* ctx);
 
 LA_API_VISIBILITY laStrUTF8 la_repo_retrieve_line_content(wclLinesRepo* repo, int lineIndex, laTranslatorType translatorType);
 
-LA_API_VISIBILITY laStrUTF8 la_repo_list_available_commands(wclLinesRepo* repo);
+LA_API_VISIBILITY laStrUTF8 la_repo_get_summary(wclLinesRepo* repo);
+LA_API_VISIBILITY laStrUTF8 la_repo_get_available_commands(wclLinesRepo* repo);
 
 LA_API_VISIBILITY laStrUTF8 la_repo_execute_command(wclLinesRepo* repo, laStrFixedUTF8 tag, laStrFixedUTF8 name);
 LA_API_VISIBILITY laStrUTF8 la_repo_execute_command_params(wclLinesRepo* repo, laStrFixedUTF8 tag, laStrFixedUTF8 name, laStrFixedUTF8 params);
