@@ -30,10 +30,14 @@ typedef enum {
 
 typedef enum {
 	LA_TRANSLATOR_TYPE_RAW,
-	LA_TRANSLATOR_TYPE_RAW_JSON,
-	LA_TRANSLATOR_TYPE_TRANSLATED,
-	LA_TRANSLATOR_TYPE_TRANSLATED_JSON
+	LA_TRANSLATOR_TYPE_TRANSLATED
 } laTranslatorType;
+
+typedef enum {
+	LA_TRANSLATOR_FORMAT_LINE,
+	LA_TRANSLATOR_FORMAT_JSON_FULL,
+	LA_TRANSLATOR_FORMAT_JSON_SINGLE_PARAMS
+} laTranslatorFormat;
 
 typedef enum {
 	LA_SEARCH_OPTION_NONE,
@@ -57,6 +61,7 @@ typedef struct
 	int8_t appendToFile;
 	laStrFixedUTF8 filePath;
 	laTranslatorType translationType;
+	laTranslatorFormat translationFormat;
 } laExportOptions;
 
 typedef struct wclFindContext wclFindContext;
@@ -108,7 +113,7 @@ LA_API_VISIBILITY wclFindContext* la_repo_search_text_regex(wclLinesRepo* repo, 
 LA_API_VISIBILITY void la_repo_search_next(wclLinesRepo* repo, wclFindContext* ctx);
 LA_API_VISIBILITY void la_repo_search_destroy(wclFindContext* ctx);
 
-LA_API_VISIBILITY laStrUTF8 la_repo_retrieve_line_content(wclLinesRepo* repo, int lineIndex, laTranslatorType translatorType);
+LA_API_VISIBILITY laStrUTF8 la_repo_retrieve_line_content(wclLinesRepo* repo, int lineIndex, laTranslatorType translatorType, laTranslatorFormat translatorFormat);
 
 LA_API_VISIBILITY laStrUTF8 la_repo_get_summary(wclLinesRepo* repo);
 LA_API_VISIBILITY laStrUTF8 la_repo_get_available_commands(wclLinesRepo* repo);

@@ -381,7 +381,7 @@ int main(int argc, char* argv[])
 						std::cout << std::endl;
 
 					for (const auto& index : jIndices)
-						std::cout << repoLines->retrieveLineContent(index.get<size_t>(), la::TranslatorsRepo::Type::Translated) << std::endl;
+						std::cout << repoLines->retrieveLineContent(index.get<size_t>(), la::TranslatorsRepo::Type::Translated, la::TranslatorsRepo::Format::Line) << std::endl;
 				}
 
 				continue;
@@ -401,7 +401,7 @@ int main(int argc, char* argv[])
 					size_t lineIndex;
 					if (auto [p, ec] = std::from_chars(params[1].data(), params[1].data() + params[1].size(), lineIndex); ec == std::errc())
 					{
-						std::cout << repoLines->retrieveLineContent(lineIndex, la::TranslatorsRepo::Type::Translated) << std::endl;
+						std::cout << repoLines->retrieveLineContent(lineIndex, la::TranslatorsRepo::Type::Translated, la::TranslatorsRepo::Format::Line) << std::endl;
 						continue;
 					}
 				}
@@ -520,7 +520,7 @@ int main(int argc, char* argv[])
 					continue;
 				}
 
-				std::cout << repoLines->retrieveLineContent(std::get<0>(ctx.search.position()), la::TranslatorsRepo::Type::Translated) << std::endl;
+				std::cout << repoLines->retrieveLineContent(std::get<0>(ctx.search.position()), la::TranslatorsRepo::Type::Translated, la::TranslatorsRepo::Format::Line) << std::endl;
 				std::cout << fmt::format("{:>{}}", "^", std::get<1>(ctx.search.position()) + 1) << std::endl;
 			}
 			else if (params.size() >= 2)
@@ -536,7 +536,7 @@ int main(int argc, char* argv[])
 					continue;
 				}
 
-				std::cout << repoLines->retrieveLineContent(std::get<0>(ctx.search.position()), la::TranslatorsRepo::Type::Translated) << std::endl;
+				std::cout << repoLines->retrieveLineContent(std::get<0>(ctx.search.position()), la::TranslatorsRepo::Type::Translated, la::TranslatorsRepo::Format::Line) << std::endl;
 				std::cout << fmt::format("{:>{}}", "^", std::get<1>(ctx.search.position()) + 1) << std::endl;
 			}
 
@@ -558,7 +558,7 @@ int main(int argc, char* argv[])
 			while (result.isValid())
 			{
 				count++;
-				std::cout << repoLines->retrieveLineContent(std::get<0>(result.position()), la::TranslatorsRepo::Type::Translated) << std::endl;
+				std::cout << repoLines->retrieveLineContent(std::get<0>(result.position()), la::TranslatorsRepo::Type::Translated, la::TranslatorsRepo::Format::Line) << std::endl;
 				result = repoLines->searchNext(result);
 			}
 

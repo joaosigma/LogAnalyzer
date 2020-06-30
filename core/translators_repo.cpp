@@ -89,86 +89,106 @@ namespace la
 		}
 	}
 
-	bool TranslatorsRepo::translate(Type type, FlavorsRepo::Type flavor, LogLine line, TranslationCtx& translationCtx)
+	bool TranslatorsRepo::translate(Type type, Format format, FlavorsRepo::Type flavor, LogLine line, TranslationCtx& translationCtx)
 	{
 		assert(translationCtx.output.empty());
 
 		if (line.data.end <= line.data.start)
 			return false;
 
-		//raw types never fail
-		switch (type)
+		if (type == Type::Raw)
 		{
-		case Type::Raw:
-			translationCtx.output.append(line.data.start, line.data.end);
-			return true;
-		case Type::RawJSON:
-		{
-			nlohmann::json jLine;
+			//raw types never fail
 
-			jLine["timestamp"] = line.timestamp;
-			jLine["threadId"] = line.threadId;
-			jLine["level"] = line.level;
-
-			jLine["tag"] = std::string_view{ line.data.start + line.sectionTag.offset, line.sectionTag.size };
-			jLine["method"] = std::string_view{ line.data.start + line.sectionMethod.offset, line.sectionMethod.size };
-			jLine["msg"] = std::string_view{ line.data.start + line.sectionMsg.offset, line.sectionMsg.size };
-
-			jLine["params"] = nlohmann::json::array();
-
-			iterateParams(line.getSectionParams(), [&jParams = jLine["params"]](std::string_view paramName, std::string_view paramValue)
+			switch (format)
 			{
-				nlohmann::json jParam;
-				jParam["name"] = paramName;
-				jParam["value"] = paramValue;
-				jParams.push_back(std::move(jParam));
+			case Format::Line:
+				translationCtx.output.append(line.data.start, line.data.end);
 				return true;
-			});
-
-			translationCtx.output = jLine.dump(-1, '\t', false, nlohmann::detail::error_handler_t::replace);
-			return true;
-		}
-		default:
-			break;
-		}
-
-		//reaching this point, we have to translate (we *can* more than one translator for the same flavor)
-		for (const auto& [translatorFlavor, translator] : Translators)
-		{
-			if (translatorFlavor != flavor)
-				continue;
-
-			translationCtx.auxiliary.clear();
-			translator.translate(line, translationCtx);
-		}
-
-		switch (type)
-		{
-		case Type::Translated:
-
-			if (translationCtx.output.empty())
-				return TranslatorsRepo::translate(Type::Raw, flavor, line, translationCtx); //default to raw (no translation)
-			return true;
-
-		case Type::TranslatedJSON:
-		{
-			if (translationCtx.output.empty())
-				return TranslatorsRepo::translate(Type::RawJSON, flavor, line, translationCtx); //default to raw (no translation)
-
-			LogLine newLine;
-			auto currentTranslation = translationCtx.output; //newLine will point to this string
-
-			if (FlavorsRepo::processLineData(flavor, currentTranslation, newLine))
+			case Format::JSONFull:
+			case Format::JSONSingleParams:
 			{
-				translationCtx.output.clear();
-				translationCtx.auxiliary.clear();
-				return TranslatorsRepo::translate(Type::RawJSON, flavor, newLine, translationCtx);
+				nlohmann::json jLine;
+
+				jLine["timestamp"] = line.timestamp;
+				jLine["threadId"] = line.threadId;
+				jLine["level"] = line.level;
+
+				jLine["tag"] = line.getSectionTag();
+				jLine["method"] = line.getSectionMethod();
+				jLine["msg"] = line.getSectionMsg();
+
+				if (format == Format::JSONFull)
+				{
+					jLine["params"] = nlohmann::json::array();
+
+					iterateParams(line.getSectionParams(), [&jParams = jLine["params"]](std::string_view paramName, std::string_view paramValue)
+					{
+						nlohmann::json jParam;
+						jParam["name"] = paramName;
+						jParam["value"] = paramValue;
+						jParams.push_back(std::move(jParam));
+						return true;
+					});
+				}
+				else
+				{
+					jLine["params"] = line.getSectionParams();
+				}
+
+				translationCtx.output = jLine.dump(-1, '\t', false, nlohmann::detail::error_handler_t::replace);
+				return true;
+			}
+			default:
+				break;
 			}
 
-			break;
+			return false;
 		}
-		default:
-			break;
+		else if (type == Type::Translated)
+		{
+			//reaching this point, we have to translate (we *can* more than one translator for the same flavor)
+
+			for (const auto& [translatorFlavor, translator] : Translators)
+			{
+				if (translatorFlavor != flavor)
+					continue;
+
+				translationCtx.auxiliary.clear();
+				translator.translate(line, translationCtx);
+			}
+
+			switch (format)
+			{
+			case Format::Line:
+
+				if (translationCtx.output.empty())
+					return TranslatorsRepo::translate(Type::Raw, format, flavor, line, translationCtx); //default to raw (no translation)
+				return true;
+
+			case Format::JSONFull:
+			case Format::JSONSingleParams:
+			{
+				if (translationCtx.output.empty())
+					return TranslatorsRepo::translate(Type::Raw, format, flavor, line, translationCtx); //default to raw (no translation)
+
+				LogLine newLine;
+				auto currentTranslation = translationCtx.output; //newLine will point to this string
+
+				if (FlavorsRepo::processLineData(flavor, currentTranslation, newLine))
+				{
+					translationCtx.output.clear();
+					translationCtx.auxiliary.clear();
+					return TranslatorsRepo::translate(Type::Raw, format, flavor, newLine, translationCtx);
+				}
+
+				break;
+			}
+			default:
+				break;
+			}
+
+			return false;
 		}
 
 		//unknown format
