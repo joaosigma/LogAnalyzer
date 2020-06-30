@@ -59,7 +59,7 @@ namespace la
 			if (registerCtx.flavor() != FlavorsRepo::Type::WCSServer)
 				return;
 
-			registerCtx.registerCommand({ "msg", "all log lines pretending to the message", "message content",
+			registerCtx.registerCommand({ "Message", "All log lines pretending to the message", "message content",
 				[](CommandsRepo::IResultCtx& resultCtx, const LinesTools& linesTools, std::string_view params) { cmdMsg(resultCtx, linesTools, params); } });
 		};
 

@@ -645,19 +645,19 @@ namespace la
 			if ((flavor != FlavorsRepo::Type::WCSCOMLib) && (flavor != FlavorsRepo::Type::WCSAndroidLogcat))
 				return;
 
-			registerCtx.registerCommand({ "summary", "produce a quick summary of the entire logs", {},
+			registerCtx.registerCommand({ "Summary", "Produce a quick summary of the entire logs", {},
 				[](CommandsRepo::IResultCtx& resultCtx, const LinesTools& linesTools, std::string_view) { return cmdSummary(resultCtx, linesTools); } });
 
-			registerCtx.registerCommand({ "deadlocks", "isolate every app execution and detect deadlocks in each one", {},
+			registerCtx.registerCommand({ "Deadlocks", "Isolate every app execution and detect deadlocks in each one", {},
 				[](CommandsRepo::IResultCtx& resultCtx, const LinesTools& linesTools, std::string_view) { return cmdDeadlocks(resultCtx, linesTools); } });
 
-			registerCtx.registerCommand({ "task execution", "return all lines corresponding to a particular task execution", "task id or name",
+			registerCtx.registerCommand({ "Task execution", "Return all lines corresponding to a particular task execution", "task id or name",
 				[](CommandsRepo::IResultCtx& resultCtx, const LinesTools& linesTools, std::string_view cmdParams) { return cmdTaskExecutions(resultCtx, linesTools, cmdParams, { 0, linesTools.lines().size() }); } });
 
-			registerCtx.registerCommand({ "msg flow", "return all tasks that deal with a particular message", "msg id or networkId",
+			registerCtx.registerCommand({ "Message flow", "Return all tasks that deal with a particular message", "msg id or networkId",
 				[](CommandsRepo::IResultCtx& resultCtx, const LinesTools& linesTools, std::string_view cmdParams) { return cmdMsgFlow(resultCtx, linesTools, cmdParams, { 0, linesTools.lines().size() }); } });
 
-			registerCtx.registerCommand({ "SIP flows", "return all log lines with SIP content", "optional SIP method name filter",
+			registerCtx.registerCommand({ "SIP flows", "Return all log lines with SIP content", "optional SIP method name filter",
 				[](CommandsRepo::IResultCtx& resultCtx, const LinesTools& linesTools, std::string_view cmdParams) { return cmdSIPFlows(resultCtx, linesTools, cmdParams); } });
 		};
 
