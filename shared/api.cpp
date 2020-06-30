@@ -38,18 +38,27 @@ namespace
 
 		switch (options->translationType)
 		{
-		case LA_TRANSLATOR_TYPE_RAW_JSON:
-			nOptions.translationType = la::TranslatorsRepo::Type::RawJSON;
-			break;
 		case LA_TRANSLATOR_TYPE_TRANSLATED:
 			nOptions.translationType = la::TranslatorsRepo::Type::Translated;
-			break;
-		case LA_TRANSLATOR_TYPE_TRANSLATED_JSON:
-			nOptions.translationType = la::TranslatorsRepo::Type::TranslatedJSON;
 			break;
 		case LA_TRANSLATOR_TYPE_RAW:
 		default:
 			nOptions.translationType = la::TranslatorsRepo::Type::Raw;
+			break;
+		}
+
+		switch (options->translationFormat)
+		{
+		case LA_TRANSLATOR_FORMAT_JSON_FULL:
+			nOptions.translationFormat = la::TranslatorsRepo::Format::JSONFull;
+			break;
+		case LA_TRANSLATOR_FORMAT_JSON_SINGLE_PARAMS:
+			nOptions.translationFormat = la::TranslatorsRepo::Format::JSONSingleParams;
+			break;
+			break;
+		case LA_TRANSLATOR_FORMAT_LINE:
+		default:
+			nOptions.translationFormat = la::TranslatorsRepo::Format::Line;
 			break;
 		}
 
@@ -295,12 +304,14 @@ void la_repo_search_destroy(wclFindContext* ctx)
 	delete reinterpret_cast<la::LinesRepo::FindContext*>(ctx);
 }
 
-laStrUTF8 la_repo_retrieve_line_content(wclLinesRepo* repo, int lineIndex, laTranslatorType translatorType)
+laStrUTF8 la_repo_retrieve_line_content(wclLinesRepo* repo, int lineIndex, laTranslatorType translatorType, laTranslatorFormat translatorFormat)
 {
 	if (!repo || (lineIndex < 0))
 		return la_str_init();
 
-	auto res = reinterpret_cast<la::LinesRepo*>(repo)->retrieveLineContent(static_cast<size_t>(lineIndex), static_cast<la::TranslatorsRepo::Type>(translatorType));
+	auto res = reinterpret_cast<la::LinesRepo*>(repo)->retrieveLineContent(static_cast<size_t>(lineIndex),
+		static_cast<la::TranslatorsRepo::Type>(translatorType),
+		static_cast<la::TranslatorsRepo::Format>(translatorFormat));
 	return convertStr(res);
 }
 

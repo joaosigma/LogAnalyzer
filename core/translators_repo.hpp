@@ -14,9 +14,14 @@ namespace la
 		enum class Type : uint8_t
 		{
 			Raw,
-			RawJSON,
 			Translated,
-			TranslatedJSON
+		};
+
+		enum class Format : uint8_t
+		{
+			Line,
+			JSONFull,
+			JSONSingleParams,
 		};
 
 		struct TranslationCtx
@@ -31,7 +36,7 @@ namespace la
 		};
 
 	public:
-		static bool translate(Type type, FlavorsRepo::Type flavor, LogLine line, TranslationCtx& translationCtx);
+		static bool translate(Type type, Format format, FlavorsRepo::Type flavor, LogLine line, TranslationCtx& translationCtx);
 	};
 }
 

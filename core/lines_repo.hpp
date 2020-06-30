@@ -25,6 +25,7 @@ namespace la
 			bool appendToFile{ true };
 
 			TranslatorsRepo::Type translationType{ TranslatorsRepo::Type::Raw };
+			TranslatorsRepo::Format translationFormat{ TranslatorsRepo::Format::Line };
 		};
 
 		class FindContext
@@ -110,7 +111,7 @@ namespace la
 		FindContext searchTextRegex(std::string_view query, FindContext::FindOptions options) const;
 		FindContext searchNext(FindContext ctx) const;
 
-		std::string retrieveLineContent(size_t lineIndex, TranslatorsRepo::Type type) const;
+		std::string retrieveLineContent(size_t lineIndex, TranslatorsRepo::Type type, TranslatorsRepo::Format format) const;
 
 		std::string getSummary() const;
 		std::string getAvailableCommands() const;

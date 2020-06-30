@@ -203,7 +203,7 @@ namespace la
 		}
 	}
 
-	std::string LinesRepo::retrieveLineContent(size_t lineIndex, TranslatorsRepo::Type type) const
+	std::string LinesRepo::retrieveLineContent(size_t lineIndex, TranslatorsRepo::Type type, TranslatorsRepo::Format format) const
 	{
 		if ((lineIndex < 0) || (lineIndex >= m_lines.size()))
 			return {};
@@ -211,7 +211,7 @@ namespace la
 		const auto& line = m_lines[lineIndex];
 
 		TranslatorsRepo::TranslationCtx translationCtx;
-		return (TranslatorsRepo::translate(type, flavor(), line, translationCtx) ? translationCtx.output : "");
+		return (TranslatorsRepo::translate(type, format, flavor(), line, translationCtx) ? translationCtx.output : "");
 	}
 
 	std::string LinesRepo::getSummary() const
@@ -451,7 +451,7 @@ namespace la
 			translationCtx.output.clear();
 			translationCtx.auxiliary.clear();
 
-			if (TranslatorsRepo::translate(options.translationType, repoFlavor, line, translationCtx))
+			if (TranslatorsRepo::translate(options.translationType, options.translationFormat, repoFlavor, line, translationCtx))
 				out.write(translationCtx.output.data(), translationCtx.output.size());
 			else
 				out.write(line.data.start, static_cast<size_t>(line.data.end - line.data.start));
@@ -522,7 +522,7 @@ namespace la
 					translationCtx.output.clear();
 					translationCtx.auxiliary.clear();
 
-					if (TranslatorsRepo::translate(options.translationType, repoFlavor, line, translationCtx))
+					if (TranslatorsRepo::translate(options.translationType, options.translationFormat, repoFlavor, line, translationCtx))
 						out.write(translationCtx.output.data(), translationCtx.output.size());
 					else
 						out.write(line.data.start, static_cast<size_t>(line.data.end - line.data.start));
