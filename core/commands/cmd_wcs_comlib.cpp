@@ -202,6 +202,23 @@ namespace la
 				return;
 
 			auto& jResult = resultCtx.json();
+
+			{
+				auto jExecs = nlohmann::json::array();
+
+				for (const auto& range : toolRetrieveAllExecutions(linesTools))
+				{
+					if (range.empty())
+						continue;
+
+					nlohmann::json jRange;
+					jRange["lineIndexStart"] = range.start;
+					jRange["lineCount"] = range.numLines();
+					jExecs.push_back(std::move(jRange));
+				}
+
+				jResult["ranges"] = std::move(jExecs);
+			}
 			
 			{
 				LinesTools::FilterCollection filter{
@@ -210,7 +227,7 @@ namespace la
 				std::regex regex{ R"(User-Agent: (\S+\/\S+ \S+\/\S+ \S+\/\S+ \S+\/\S+))", std::regex::ECMAScript | std::regex::icase };
 
 				std::set<std::string> userAgents;
-				linesTools.windowIterate({ 0, lines.size() }, filter, [&regex, &userAgents](size_t x, LogLine line, size_t lineIndex)
+				linesTools.windowIterate({ 0, lines.size() }, filter, [&regex, &userAgents](size_t, LogLine line, size_t lineIndex)
 				{
 					std::cmatch matches;
 					if (std::regex_search(line.data.start + line.sectionMsg.offset, line.data.end, matches, regex))
