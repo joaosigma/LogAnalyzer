@@ -2,6 +2,7 @@
 
 #include "commands/cmd_wcs_comlib.hpp"
 #include "commands/cmd_wcs_server.hpp"
+#include "commands/cmd_wcs_ui_android.hpp"
 
 #include <array>
 
@@ -9,10 +10,11 @@ namespace la
 {
 	namespace
 	{
-		std::array<CommandsRepo::Registry, 2> CommandsRegistry{ {
+		std::array<CommandsRepo::Registry, 3> CommandsRegistry{ {
 				//known types
 				{ CommandsCOMLib::genCommandsRegistry() },
 				{ CommandsServer::genCommandsRegistry() },
+				{ CommandsUIAndroid::genCommandsRegistry() },
 
 				//any new types should be placed after this line
 			} };
