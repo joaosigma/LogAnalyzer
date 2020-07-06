@@ -111,6 +111,9 @@ namespace la
 		FindContext searchTextRegex(std::string_view query, FindContext::FindOptions options) const;
 		FindContext searchNext(FindContext ctx) const;
 
+		std::string findAll(std::string_view query, FindContext::FindOptions options) const;
+		std::string findAllRegex(std::string_view query, FindContext::FindOptions options) const;
+
 		std::string retrieveLineContent(size_t lineIndex, TranslatorsRepo::Type type, TranslatorsRepo::Format format) const;
 
 		std::string getSummary() const;

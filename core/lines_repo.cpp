@@ -203,6 +203,56 @@ namespace la
 		}
 	}
 
+	std::string LinesRepo::findAll(std::string_view query, FindContext::FindOptions options) const
+	{
+		std::unordered_map<size_t, std::vector<size_t>> curLineMatches;
+		{
+			auto ctx = searchText(query, options);
+			while (ctx.isValid())
+			{
+				curLineMatches[std::get<0>(ctx.position())].push_back(std::get<1>(ctx.position()));
+				ctx = searchNext(ctx);
+			}
+		}
+
+		auto jLines = nlohmann::json::array();
+
+		for (auto& [lineIndex, lineOffsets] : curLineMatches)
+		{
+			nlohmann::json jLine;
+			jLine["index"] = lineIndex;
+			jLine["offsets"] = std::move(lineOffsets);
+			jLines.push_back(std::move(jLine));
+		}
+
+		return jLines.dump();
+	}
+
+	std::string LinesRepo::findAllRegex(std::string_view query, FindContext::FindOptions options) const
+	{
+		std::unordered_map<size_t, std::vector<size_t>> curLineMatches;
+		{
+			auto ctx = searchTextRegex(query, options);
+			while (ctx.isValid())
+			{
+				curLineMatches[std::get<0>(ctx.position())].push_back(std::get<1>(ctx.position()));
+				ctx = searchNext(ctx);
+			}
+		}
+
+		auto jLines = nlohmann::json::array();
+
+		for (auto& [lineIndex, lineOffsets] : curLineMatches)
+		{
+			nlohmann::json jLine;
+			jLine["index"] = lineIndex;
+			jLine["offsets"] = std::move(lineOffsets);
+			jLines.push_back(std::move(jLine));
+		}
+
+		return jLines.dump();
+	}
+
 	std::string LinesRepo::retrieveLineContent(size_t lineIndex, TranslatorsRepo::Type type, TranslatorsRepo::Format format) const
 	{
 		if ((lineIndex < 0) || (lineIndex >= m_lines.size()))

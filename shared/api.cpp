@@ -304,6 +304,24 @@ void la_repo_search_destroy(wclFindContext* ctx)
 	delete reinterpret_cast<la::LinesRepo::FindContext*>(ctx);
 }
 
+laStrUTF8 la_repo_find_all(wclLinesRepo* repo, laStrFixedUTF8 query, laSearchOptions searchOptions)
+{
+	if (!repo)
+		return la_str_init();
+
+	auto res = reinterpret_cast<la::LinesRepo*>(repo)->findAll({ query.data, static_cast<size_t>(query.size) }, convertSearchOptions(searchOptions));
+	return convertStr(res);
+}
+
+laStrUTF8 la_repo_find_all_regex(wclLinesRepo* repo, laStrFixedUTF8 query, laSearchOptions searchOptions)
+{
+	if (!repo)
+		return la_str_init();
+
+	auto res = reinterpret_cast<la::LinesRepo*>(repo)->findAllRegex({ query.data, static_cast<size_t>(query.size) }, convertSearchOptions(searchOptions));
+	return convertStr(res);
+}
+
 laStrUTF8 la_repo_retrieve_line_content(wclLinesRepo* repo, int lineIndex, laTranslatorType translatorType, laTranslatorFormat translatorFormat)
 {
 	if (!repo || (lineIndex < 0))
