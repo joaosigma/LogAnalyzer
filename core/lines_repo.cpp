@@ -264,7 +264,7 @@ namespace la
 		return (TranslatorsRepo::translate(type, format, flavor(), line, translationCtx) ? translationCtx.output : "");
 	}
 
-	std::optional<size_t> LinesRepo::getLineIndex(size_t lineId) const noexcept
+	std::optional<size_t> LinesRepo::getLineIndex(int32_t lineId) const noexcept
 	{
 		if (m_lines.empty())
 			return std::nullopt;
@@ -679,7 +679,7 @@ namespace la
 			FlavorsRepo::processFileData(m_repoFiles->flavor(), data, size, m_lines);
 		});
 
-		size_t idGen{ 1 };
+		int32_t idGen{ 1 };
 		for (auto& line : m_lines)
 			line.id = idGen++;
 

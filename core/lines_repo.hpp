@@ -116,7 +116,7 @@ namespace la
 
 		std::string retrieveLineContent(size_t lineIndex, TranslatorsRepo::Type type, TranslatorsRepo::Format format) const;
 
-		std::optional<size_t> getLineIndex(size_t lineId) const noexcept;
+		std::optional<size_t> getLineIndex(int32_t lineId) const noexcept;
 		std::string getSummary() const;
 		std::string getAvailableCommands() const;
 
