@@ -15,6 +15,8 @@ namespace la
 	{
 		enum class MatchType : uint8_t { Exact, StartsWith, EndsWith, Contains };
 
+		int32_t id;
+
 		LogLevel level;
 		int32_t threadId;
 		int64_t timestamp;
@@ -143,6 +145,8 @@ namespace la
 				return false;
 		}
 	};
+
+	static_assert(std::is_trivial_v<LogLine>);
 }
 
 #endif

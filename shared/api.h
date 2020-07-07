@@ -118,6 +118,7 @@ LA_API_VISIBILITY laStrUTF8 la_repo_find_all_regex(wclLinesRepo* repo, laStrFixe
 
 LA_API_VISIBILITY laStrUTF8 la_repo_retrieve_line_content(wclLinesRepo* repo, int lineIndex, laTranslatorType translatorType, laTranslatorFormat translatorFormat);
 
+LA_API_VISIBILITY int la_repo_get_lineIndex(wclLinesRepo* repo, int lineId, int* lineIndex);
 LA_API_VISIBILITY laStrUTF8 la_repo_get_summary(wclLinesRepo* repo);
 LA_API_VISIBILITY laStrUTF8 la_repo_get_available_commands(wclLinesRepo* repo);
 

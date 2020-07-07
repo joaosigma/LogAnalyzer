@@ -280,7 +280,7 @@ namespace la
 				continue;
 			}
 
-			//done!
+			//new line!
 			out.push_back(line);
 			numLines++;
 		}

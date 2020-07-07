@@ -116,6 +116,7 @@ namespace la
 
 		std::string retrieveLineContent(size_t lineIndex, TranslatorsRepo::Type type, TranslatorsRepo::Format format) const;
 
+		std::optional<size_t> getLineIndex(size_t lineId) const noexcept;
 		std::string getSummary() const;
 		std::string getAvailableCommands() const;
 
@@ -129,8 +130,6 @@ namespace la
 	private:
 		LinesRepo(std::shared_ptr<FilesRepo> repoFiles);
 		LinesRepo(const LinesRepo& sourceRepo, std::vector<LogLine> logLines);
-
-		void processData(const void* data, size_t dataSize);
 
 	private:
 		LinesTools m_linesTools;
