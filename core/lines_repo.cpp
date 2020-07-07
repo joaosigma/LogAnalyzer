@@ -264,6 +264,21 @@ namespace la
 		return (TranslatorsRepo::translate(type, format, flavor(), line, translationCtx) ? translationCtx.output : "");
 	}
 
+	std::optional<size_t> LinesRepo::getLineIndex(size_t lineId) const noexcept
+	{
+		if (m_lines.empty())
+			return std::nullopt;
+
+		LogLine target;
+		target.id = lineId;
+
+		auto it = std::lower_bound(m_lines.begin(), m_lines.end(), target, [](const auto& lineA, const auto& lineB) { return (lineA.id < lineB.id); });
+		if ((it == m_lines.end()) || (it->id != lineId))
+			return std::nullopt;
+
+		return static_cast<size_t>(std::distance(m_lines.begin(), it));
+	}
+
 	std::string LinesRepo::getSummary() const
 	{
 		auto jSummary = nlohmann::json::object();
@@ -661,8 +676,12 @@ namespace la
 	{
 		m_repoFiles->iterateFiles([this](const void* data, size_t size)
 		{
-			processData(data, size);
+			FlavorsRepo::processFileData(m_repoFiles->flavor(), data, size, m_lines);
 		});
+
+		size_t idGen{ 1 };
+		for (auto& line : m_lines)
+			line.id = idGen++;
 
 		CommandsRepo::iterateCommands(m_repoFiles->flavor(), [this](std::string_view tag, CommandsRepo::CommandInfo cmd)
 		{
@@ -680,12 +699,5 @@ namespace la
 		, m_lines{ std::move(logLines) }
 		, m_cmds{ sourceRepo.m_cmds } //can reuse all the same commands
 		, m_repoFiles{ sourceRepo.m_repoFiles } //store a reference to the files
-	{
-
-	}
-
-	void LinesRepo::processData(const void* data, size_t dataSize)
-	{
-		FlavorsRepo::processFileData(m_repoFiles->flavor(), data, dataSize, m_lines);
-	}
+	{ }
 }

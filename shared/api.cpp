@@ -333,6 +333,19 @@ laStrUTF8 la_repo_retrieve_line_content(wclLinesRepo* repo, int lineIndex, laTra
 	return convertStr(res);
 }
 
+int la_repo_get_lineIndex(wclLinesRepo* repo, int lineId, int* lineIndex)
+{
+	if (!repo || !lineIndex)
+		return 0;
+
+	auto res = reinterpret_cast<la::LinesRepo*>(repo)->getLineIndex(static_cast<size_t>(lineId));
+	if (!res)
+		return 0;
+
+	*lineIndex = static_cast<int>(*res);
+	return 1;
+}
+
 laStrUTF8 la_repo_get_summary(wclLinesRepo* repo)
 {
 	if (!repo)

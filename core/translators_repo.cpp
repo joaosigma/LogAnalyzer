@@ -110,6 +110,7 @@ namespace la
 			{
 				nlohmann::json jLine;
 
+				jLine["id"] = line.id;
 				jLine["timestamp"] = line.timestamp;
 				jLine["threadId"] = line.threadId;
 				jLine["level"] = line.level;
