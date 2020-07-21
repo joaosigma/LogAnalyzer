@@ -364,6 +364,15 @@ laStrUTF8 la_repo_get_available_commands(wclLinesRepo* repo)
 	return convertStr(res);
 }
 
+laStrUTF8 la_repo_execute_inspection(wclLinesRepo* repo)
+{
+	if (!repo)
+		return la_str_init();
+
+	auto res = reinterpret_cast<la::LinesRepo*>(repo)->executeInspection();
+	return convertStr(res);
+}
+
 laStrUTF8 la_repo_execute_command(wclLinesRepo* repo, laStrFixedUTF8 tag, laStrFixedUTF8 name)
 {
 	if (!repo)

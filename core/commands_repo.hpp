@@ -42,6 +42,7 @@ namespace la
 			std::string name;
 			std::string help;
 			std::string paramsHelp;
+			bool supportLineExecution;
 
 			std::function<void(IResultCtx& resultCtx, const LinesTools& linesTools, std::string_view params)> executionCb;
 		};

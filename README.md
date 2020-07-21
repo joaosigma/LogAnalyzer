@@ -31,7 +31,7 @@ The project is divided into 4 main folders:
 * shared: the C API that exposes every feature when building log-analyzer as a shared library (default CMake build)
 * third_party: external dependencies
 
-Most of the time, a developer will simply want to add a new command or even perhaps a new flavor of logs, which means that, usually, it only needs to hack code inside the "core" folder.
+Most of the time, a developer will simply want to add a new command or inspection or even perhaps a new flavor of logs, which means that, usually, it only needs to hack code inside the "core" folder.
 
 ## How to add a new flavor
 
@@ -39,7 +39,7 @@ A "flavor" is a type of log files. For example, if you have 4 different applicat
 
 Steps to add a new flavor:
 1. Go to the ```FlavorsRepo``` class (in file "flavors_repo.cpp") and add a new entry to the ```Type``` enum
-2. Go to the "flavors" folder and add a new .cpp and .hpp files with the appropriate names and following the guidelines of the already existing flavors:
+2. Go to the "flavors" folder and add a new .cpp and .hpp files with the appropriate names and follow the guidelines of the already existing flavors:
     1. In the header file, add a single class with a single static method with the signature ```static FlavorsRepo::Info genFlavorsRepoInfo();```
     2. In the source file, implement that method which should return an instance of ```FlavorsRepo::Info``` properly configured
 3. Finally, go the "flavors_repo.hpp" file and add a new entry to the ```Flavors``` static array with the enum and method of your new flavor.
@@ -53,10 +53,24 @@ Flavors are just parsers, which means that, after they're done, we just have an 
 
 A command can be used with more that one flavor. Using the example above, if MyAppText and MyAppBin index to the same kind of data, then any command used in one can be also used in the other.
 
-To create a new command, go to the "commands" folder and add a new .cpp and .hpp files with the appropriate names and following the guidelines of the already existing commands:
+To create a new command, go to the "commands" folder and add a new .cpp and .hpp files with the appropriate names and follow the guidelines of the already existing commands:
 1. In the header file, add a single class with a single static method with the signature ```static CommandsRepo::Registry genCommandsRegistry();```
 2. In the source file, implement that method which should return an instance of ```CommandsRepo::Registry``` properly configured
 
 A command registry is called whenever a new lines repository is created, or in other words, each time a new flavor is processed.
 
 Commands must have a valid "tag" associated with them. This allows commands to be grouped according to functionality. For example, and continuing using the examples above, we have 4 applications (AppA, AppB, AppC and AppC) writing to two flavors of log files (MyAppText and MyAppBin). Since both flavors produce the same information, all commands that we create can be used with both flavors. But now, imagine that, for the team responsible for AppA, they need to create several commands to analyze the logs and they aren't useful to the remaining applications. They would then create their commands with the tag "AppA", while the other teams would create other tags.
+
+## How to add a new inspector
+
+Similar to commands, inspectors are just checks / validators that will be performed once, per repo creation, to gather information (trivial or importante one) about said repo. Examples of inspectors are:
+* gather executions
+* check and gather all exceptions and / or panics
+
+Also like commands, an inspector can be used with more that one flavor.
+
+To create a new command, go to the "inspectors" folder and add a new .cpp and .hpp files with the appropriate names and follow the guidelines of the already existing inspectors:
+1. In the header file, add a single class with a single static method with the signature ```static InspectorsRepo::Registry genInspectorRegistry();```
+2. In the source file, implement that method which should return an instance of ```InspectorsRepo::Registry``` properly configured
+
+An inspectors registry is called whenever a new repo is created.

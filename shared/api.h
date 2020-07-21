@@ -122,6 +122,7 @@ LA_API_VISIBILITY int la_repo_get_lineIndex(wclLinesRepo* repo, int32_t lineId, 
 LA_API_VISIBILITY laStrUTF8 la_repo_get_summary(wclLinesRepo* repo);
 LA_API_VISIBILITY laStrUTF8 la_repo_get_available_commands(wclLinesRepo* repo);
 
+LA_API_VISIBILITY laStrUTF8 la_repo_execute_inspection(wclLinesRepo* repo);
 LA_API_VISIBILITY laStrUTF8 la_repo_execute_command(wclLinesRepo* repo, laStrFixedUTF8 tag, laStrFixedUTF8 name);
 LA_API_VISIBILITY laStrUTF8 la_repo_execute_command_params(wclLinesRepo* repo, laStrFixedUTF8 tag, laStrFixedUTF8 name, laStrFixedUTF8 params);
 
