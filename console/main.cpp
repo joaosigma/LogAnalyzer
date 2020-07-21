@@ -349,6 +349,25 @@ int main(int argc, char* argv[])
 			continue;
 		}
 
+		if ((params.size() == 1) && ((params[0] == "i") || (params[0] == "inspect")))
+		{
+			auto timestamp = std::chrono::high_resolution_clock::now();
+
+			auto result = repoLines->executeInspection();
+			if (result.empty())
+				continue;
+
+			auto delta = std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(std::chrono::high_resolution_clock::now() - timestamp).count();
+
+			{
+				auto jRoot = nlohmann::json::parse(result);
+				std::cout << jRoot.dump(1, '\t') << std::endl;
+			}
+
+			std::cout << fmt::format("inspection executed successfully in {:.2f} ms)", delta) << std::endl;
+			continue;
+		}
+
 		if ((params.size() >= 1) && ((params[0] == "p") || (params[0] == "print")))
 		{
 			//print all content of all the lines
@@ -573,6 +592,7 @@ int main(int argc, char* argv[])
 			std::cout << "available keywords: " << std::endl;
 			std::cout << "\t l[ist] - list available commands" << std::endl;
 			std::cout << "\t e[xec] - execute a command" << std::endl;
+			std::cout << "\t i[nspect] - inspect logs" << std::endl;
 			std::cout << "\t p[rint] - print stuff" << std::endl;
 			std::cout << "\t push/pop - push or pop repo using current command result" << std::endl;
 			std::cout << "\t ex[port] - export data to a file" << std::endl;

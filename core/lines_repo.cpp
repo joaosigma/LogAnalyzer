@@ -2,6 +2,7 @@
 
 #include "utils.hpp"
 #include "files_repo.hpp"
+#include "inspectors_repo.hpp"
 
 #include <set>
 #include <regex>
@@ -356,6 +357,7 @@ namespace la
 				jCmd["help"] = cmd.help;
 				if (!cmd.paramsHelp.empty())
 					jCmd["paramsHelp"] = cmd.paramsHelp;
+				jCmd["supportLineExecution"] = cmd.supportLineExecution;
 				jCmds.push_back(std::move(jCmd));
 			}
 
@@ -367,6 +369,112 @@ namespace la
 		}
 
 		return jTags.dump();
+	}
+
+	std::string LinesRepo::executeInspection() const
+	{
+		class ResultCtx
+			: public InspectorsRepo::IResultCtx
+		{
+		public:
+			std::string toJson() const
+			{
+				return jResult.dump();
+			}
+
+			void addInfo(std::string_view msg) override
+			{
+				if (msg.empty())
+					return;
+
+				nlohmann::json jNewInfo;
+				jNewInfo["info"]["msg"] = msg;
+
+				jResult.push_back(std::move(jNewInfo));
+			}
+
+			void addInfo(std::string_view msg, size_t lineIndex) override
+			{
+				if (msg.empty())
+					return;
+
+				nlohmann::json jNewInfo;
+				jNewInfo["info"]["msg"] = msg;
+				jNewInfo["info"]["lineIndex"] = lineIndex;
+
+				jResult.push_back(std::move(jNewInfo));
+			}
+
+			void addInfo(std::string_view msg, LinesTools::LineIndexRange lineRange) override
+			{
+				if (msg.empty())
+					return;
+
+				nlohmann::json jNewInfo;
+				jNewInfo["info"]["msg"] = msg;
+				jNewInfo["info"]["lineRange"]["start"] = lineRange.start;
+				jNewInfo["info"]["lineRange"]["end"] = lineRange.end;
+
+				jResult.push_back(std::move(jNewInfo));
+			}
+
+			void addWarning(std::string_view msg) override
+			{
+				if (msg.empty())
+					return;
+
+				nlohmann::json jNewWarn;
+				jNewWarn["warn"]["msg"] = msg;
+
+				jResult.push_back(std::move(jNewWarn));
+			}
+
+			void addWarning(std::string_view msg, size_t lineIndex) override
+			{
+				if (msg.empty())
+					return;
+
+				nlohmann::json jNewWarn;
+				jNewWarn["warn"]["msg"] = msg;
+				jNewWarn["warn"]["lineIndex"] = lineIndex;
+
+				jResult.push_back(std::move(jNewWarn));
+			}
+
+			void addWarning(std::string_view msg, LinesTools::LineIndexRange lineRange) override
+			{
+				if (msg.empty())
+					return;
+
+				nlohmann::json jNewWarn;
+				jNewWarn["warn"]["msg"] = msg;
+				jNewWarn["warn"]["lineRange"]["start"] = lineRange.start;
+				jNewWarn["warn"]["lineRange"]["end"] = lineRange.end;
+
+				jResult.push_back(std::move(jNewWarn));
+			}
+
+			void addExecution(LinesTools::LineIndexRange lineRange) override
+			{
+				nlohmann::json jNewExec;
+				jNewExec["execution"]["lineRange"]["start"] = lineRange.start;
+				jNewExec["execution"]["lineRange"]["end"] = lineRange.end;
+
+				jResult.push_back(std::move(jNewExec));
+			}
+
+		private:
+			nlohmann::json jResult{ nlohmann::json::array() };
+		};
+
+		ResultCtx resultCtx{  };
+
+		InspectorsRepo::iterateInspectors(m_repoFiles->flavor(), [this, &resultCtx](InspectorsRepo::InspectorInfo inspector) mutable
+		{
+			inspector.executionCb(resultCtx, m_linesTools);
+		});
+
+		return resultCtx.toJson();
 	}
 
 	std::string LinesRepo::executeCommand(std::string_view tag, std::string_view name) const
@@ -471,7 +579,7 @@ namespace la
 			jResult.erase("output");
 
 		jResult["executed"] = executed;
-		return jResult.dump(1, '\t');
+		return jResult.dump();
 	}
 
 	bool LinesRepo::exportLines(ExportOptions options, size_t indexStart, size_t count) const

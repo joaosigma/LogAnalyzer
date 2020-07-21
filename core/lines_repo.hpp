@@ -120,6 +120,7 @@ namespace la
 		std::string getSummary() const;
 		std::string getAvailableCommands() const;
 
+		std::string executeInspection() const;
 		std::string executeCommand(std::string_view tag, std::string_view name) const;
 		std::string executeCommand(std::string_view tag, std::string_view name, std::string_view params) const;
 

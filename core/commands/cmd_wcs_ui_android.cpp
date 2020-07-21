@@ -8,17 +8,6 @@ namespace la
 {
 	namespace
 	{
-		void cmdSummary(CommandsRepo::IResultCtx& resultCtx, const LinesTools& linesTools)
-		{
-			auto& lines = linesTools.lines();
-			if (lines.empty())
-				return;
-
-			auto& jResult = resultCtx.json();
-			
-			//TODO
-		}
-
 		void cmdBarks(CommandsRepo::IResultCtx& resultCtx, const LinesTools& linesTools)
 		{
 			auto& lines = linesTools.lines();
@@ -51,10 +40,7 @@ namespace la
 			if ((flavor != FlavorsRepo::Type::WCSCOMLib) && (flavor != FlavorsRepo::Type::WCSAndroidLogcat))
 				return;
 
-			registerCtx.registerCommand({ "Summary", "Produce a quick summary of the entire logs", {},
-				[](CommandsRepo::IResultCtx& resultCtx, const LinesTools& linesTools, std::string_view) { return cmdSummary(resultCtx, linesTools); } });
-
-			registerCtx.registerCommand({ "Bark!", "Find all barks", {},
+			registerCtx.registerCommand({ "Bark!", "Find all barks", {}, false,
 				[](CommandsRepo::IResultCtx& resultCtx, const LinesTools& linesTools, std::string_view) { return cmdBarks(resultCtx, linesTools); } });
 		};
 

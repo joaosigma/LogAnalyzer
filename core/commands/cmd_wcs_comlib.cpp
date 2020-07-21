@@ -1,6 +1,7 @@
 #include "cmd_wcs_comlib.hpp"
 
 #include "../lines_tools.hpp"
+#include "cmd_wcs_comlib_utils.hpp"
 
 #include <set>
 #include <regex>
@@ -14,157 +15,6 @@ namespace la
 {
 	namespace
 	{
-		std::vector<LinesTools::LineIndexRange> toolRetrieveAllExecutions(const LinesTools& linesTools)
-		{
-			auto execs = linesTools.windowFindAll({ 0, linesTools.lines().size() }, R"(|COMLib:  | ******************************* log start *******************************)");
-
-			if (!execs.empty() && (execs.front() == 0)) //skip if logs start on an execution
-				execs.erase(execs.begin());
-
-			if (execs.empty()) //there's just one big execution
-				return { LinesTools::LineIndexRange{0, linesTools.lines().size()} };
-
-			std::vector<LinesTools::LineIndexRange> ranges;
-
-			size_t lastIndex{ 0 };
-			for (auto curIndex : execs)
-			{
-				assert(lastIndex <= curIndex);
-
-				if (lastIndex < curIndex) //avoid storing empty executions
-					ranges.push_back({ lastIndex, curIndex });
-
-				lastIndex = curIndex + 1; //skip the log line itself
-			}
-
-			return ranges;
-		}
-
-		std::vector<size_t> toolTaskExecution(const LinesTools& linesTools, int64_t taskId, LinesTools::LineIndexRange lineRange)
-		{
-			std::vector<size_t> lineIndices;
-
-			auto& lines = linesTools.lines();
-
-			//find where the task is scheduled
-			size_t taskStartLineIndex;
-			{
-				auto result = linesTools.windowFindFirst({ lineRange.start, lineRange.end }, fmt::format("| task scheduled | id={}; name=", taskId));
-				if (!result.has_value() || !lines[*result].checkSectionTag<LogLine::MatchType::Exact>("COMLib.Scheduler"))
-					return {};
-
-				lineIndices.push_back(*result);
-				taskStartLineIndex = *result; //as an optimization, we don't need to start at the beginning of the logs
-			}
-
-			//find where the task is finished (which migth not exist if the app was killed)
-			size_t taskEndLineIndex{ lineRange.end };
-			{
-				auto result = linesTools.windowFindFirst({ taskStartLineIndex, lineRange.end }, fmt::format("| task finished | id={}; name=", taskId));
-				if (result.has_value() && lines[*result].checkSectionTag<LogLine::MatchType::Exact>("COMLib.Scheduler"))
-				{
-					lineIndices.push_back(*result);
-					taskEndLineIndex = *result; //as an optimization, we don't need to finish at the end of the logs
-				}
-			}
-
-			//gather all non execution or finishing events
-			{
-				static std::array<std::string_view, 10> Queries{ {
-					"| task waiting (sync) | id={}; waiting for=",
-					"| task waiting (time) | id={}; ms=",
-					"| task waiting (task) | id={}; waiting for=",
-					"| task moving on (sync) | id={}; waited for=",
-					"| task moving on (task) | id={}; waited for=",
-					"| task cancelled | id={};",
-					"| scheduler canceled a task that didn't have support to be canceled | id={}; name=",
-					"| canceling task because task is already running | id={}; name=",
-					"| ignoring task remove because task is already running | id={}; name=",
-					"| removed task | id={}; name="
-				} };
-				
-				for (const auto& query : Queries)
-				{
-					for (auto curLineIndex : linesTools.windowFindAll({ taskStartLineIndex, taskEndLineIndex }, fmt::format(query, taskId)))
-					{
-						if (lines[curLineIndex].checkSectionTag<LogLine::MatchType::Exact>("COMLib.Scheduler"))
-							lineIndices.push_back(curLineIndex);
-					}
-				}
-			}
-
-			//gather all executions and execution steps
-			for (auto curLineIndex : linesTools.windowFindAll({ taskStartLineIndex, taskEndLineIndex }, fmt::format("| task executing | id={}; name=", taskId)))
-			{
-				if (!lines[curLineIndex].checkSectionTag<LogLine::MatchType::Exact>("COMLib.Scheduler"))
-					continue;
-
-				lineIndices.push_back(curLineIndex);
-
-				LinesTools::FilterCollection filter{
-					LinesTools::FilterParam<LinesTools::FilterType::ThreadId, int32_t>(lines[curLineIndex].threadId) };
-
-				linesTools.windowIterate({ curLineIndex + 1, taskEndLineIndex }, filter, [&lineIndices](size_t, LogLine line, size_t lineIndex)
-				{
-					if (line.checkSectionTag<LogLine::MatchType::Exact>("COMLib.Scheduler") && !line.checkSectionMsg<LogLine::MatchType::Exact>("task scheduled"))
-						return false;
-
-					lineIndices.push_back(lineIndex);
-					return true;
-				});
-			}
-
-			//gather the finishing steps
-			for (auto curLineIndex : linesTools.windowFindAll({ taskStartLineIndex, taskEndLineIndex }, fmt::format("| task finishing | id={}; name=", taskId)))
-			{
-				if (!lines[curLineIndex].checkSectionTag<LogLine::MatchType::Exact>("COMLib.Scheduler"))
-					continue;
-
-				lineIndices.push_back(curLineIndex);
-
-				LinesTools::FilterCollection filter{
-					LinesTools::FilterParam<LinesTools::FilterType::ThreadId, int32_t>(lines[curLineIndex].threadId) };
-
-				linesTools.windowIterate({ curLineIndex + 1, taskEndLineIndex }, filter, [&lineIndices](size_t, LogLine line, size_t lineIndex)
-				{
-					if (line.checkSectionTag<LogLine::MatchType::Exact>("COMLib.Scheduler") && !line.checkSectionMsg<LogLine::MatchType::Exact>("task scheduled"))
-						return false;
-
-					lineIndices.push_back(lineIndex);
-					return true;
-				});
-			}
-
-			std::sort(lineIndices.begin(), lineIndices.end());
-
-			return lineIndices;
-		}
-
-		std::optional<int64_t> toolFindTaskForLine(const LinesTools& linesTools, size_t lineIndex)
-		{
-			auto& lines = linesTools.lines();
-
-			if (lineIndex >= lines.size())
-				return std::nullopt;
-
-			auto threadId = lines[lineIndex].threadId;
-			while (true)
-			{
-				if ((lines[lineIndex].threadId == threadId) && lines[lineIndex].checkSectionTag<LogLine::MatchType::Exact>("COMLib.Scheduler") && lines[lineIndex].checkSectionMsg<LogLine::MatchType::Exact>("task executing"))
-				{
-					int64_t taskId;
-					if (lines[lineIndex].paramExtractAs("id", taskId))
-						return taskId;
-				}
-
-				if (lineIndex == 0)
-					break;
-				lineIndex--;
-			}
-
-			return std::nullopt;
-		}
-
 		template<class TCallback>
 		std::vector<size_t> toolTasksExecutionsIf(const LinesTools& linesTools, TCallback&& cb)
 		{
@@ -177,11 +27,11 @@ namespace la
 				if (!cb(lines[lineIndex]))
 					continue;
 
-				auto taskId = toolFindTaskForLine(linesTools, lineIndex);
+				auto taskId = CommandsCOMLibUtils::taskAtLine(linesTools, lineIndex);
 				if (!taskId.has_value())
 					continue;
 
-				auto taskLineIndices = toolTaskExecution(linesTools, taskId.value(), { 0, lines.size() });
+				auto taskLineIndices = CommandsCOMLibUtils::taskFullExecution(linesTools, taskId.value(), { 0, lines.size() });
 				if (taskLineIndices.empty())
 					continue;
 
@@ -195,54 +45,9 @@ namespace la
 			return lineIndices;
 		}
 
-		void cmdSummary(CommandsRepo::IResultCtx& resultCtx, const LinesTools& linesTools)
-		{
-			auto& lines = linesTools.lines();
-			if (lines.empty())
-				return;
-
-			auto& jResult = resultCtx.json();
-
-			{
-				auto jExecs = nlohmann::json::array();
-
-				for (const auto& range : toolRetrieveAllExecutions(linesTools))
-				{
-					if (range.empty())
-						continue;
-
-					nlohmann::json jRange;
-					jRange["lineIndexStart"] = range.start;
-					jRange["lineCount"] = range.numLines();
-					jExecs.push_back(std::move(jRange));
-				}
-
-				jResult["ranges"] = std::move(jExecs);
-			}
-			
-			{
-				LinesTools::FilterCollection filter{
-					LinesTools::FilterParam<LinesTools::FilterType::Tag, std::string_view>("COMLib.PJSIP") };
-
-				std::regex regex{ R"(User-Agent: (\S+\/\S+ \S+\/\S+ \S+\/\S+ \S+\/\S+))", std::regex::ECMAScript | std::regex::icase };
-
-				std::set<std::string> userAgents;
-				linesTools.windowIterate({ 0, lines.size() }, filter, [&regex, &userAgents](size_t, LogLine line, size_t lineIndex)
-				{
-					std::cmatch matches;
-					if (std::regex_search(line.data.start + line.sectionMsg.offset, line.data.end, matches, regex))
-						userAgents.insert(matches[1].str());
-
-					return true;
-				});
-
-				jResult["user-agents"] = userAgents;
-			}
-		}
-
 		void cmdTaskExecution(CommandsRepo::IResultCtx& resultCtx, const LinesTools& linesTools, int64_t taskId, LinesTools::LineIndexRange lineRange)
 		{
-			auto lineIndices = toolTaskExecution(linesTools, taskId, lineRange);
+			auto lineIndices = CommandsCOMLibUtils::taskFullExecution(linesTools, taskId, lineRange);
 			std::sort(lineIndices.begin(), lineIndices.end());
 
 			resultCtx.addLineIndices(lineIndices);
@@ -250,11 +55,32 @@ namespace la
 
 		void cmdTaskExecutions(CommandsRepo::IResultCtx& resultCtx, const LinesTools& linesTools, std::string_view params, LinesTools::LineIndexRange lineRange)
 		{
+			auto& lines = linesTools.lines();
+			if (lines.empty())
+				return;
+
+			//we support line execution
+			if ((params.size() >= 2) && (params[0] == ':') && (params[1] != ':'))
+			{
+				size_t lineIndex;
+				if (auto [p, ec] = std::from_chars(params.data() + 1, params.data() + params.size(), lineIndex); ec != std::errc())
+					return;
+
+				auto taskId = CommandsCOMLibUtils::taskAtLine(linesTools, lineIndex);
+				if (taskId.has_value())
+					cmdTaskExecution(resultCtx, linesTools, taskId.value(), lineRange);
+
+				return;
+			}
+
 			//params can be the task id
 			{
 				int64_t taskId;
 				if (auto [p, ec] = std::from_chars(params.data(), params.data() + params.size(), taskId); ec == std::errc())
-					return cmdTaskExecution(resultCtx, linesTools, taskId, lineRange);
+				{
+					cmdTaskExecution(resultCtx, linesTools, taskId, lineRange);
+					return;
+				}
 			}
 
 			//assume that params is the task name, which means we can have multiple executions
@@ -284,7 +110,7 @@ namespace la
 
 				if (taskId.has_value())
 				{
-					auto lineIndices = toolTaskExecution(linesTools, *taskId, { lineRange.start + linesProcessed - 1, lineRange.end });
+					auto lineIndices = CommandsCOMLibUtils::taskFullExecution(linesTools, *taskId, { lineRange.start + linesProcessed - 1, lineRange.end });
 					if (!lineIndices.empty())
 					{
 						std::sort(lineIndices.begin(), lineIndices.end());
@@ -323,7 +149,7 @@ namespace la
 				enum class TaskStep { Unknown, Executing, Waiting, Finishing, Finished };
 
 				//find all executions
-				for (const auto& execRange : toolRetrieveAllExecutions(linesTools))
+				for (const auto& execRange : CommandsCOMLibUtils::executionsRanges(linesTools))
 				{
 					ExecutionInfo execution;
 					execution.lineIndexStart = execRange.start;
@@ -406,7 +232,7 @@ namespace la
 
 						for (auto& [taskId, taskInfo] : execution.tasks.info)
 						{
-							taskInfo.lineIndices = toolTaskExecution(linesTools, taskId, { execution.lineIndexStart, execution.lineIndexEnd });
+							taskInfo.lineIndices = CommandsCOMLibUtils::taskFullExecution(linesTools, taskId, { execution.lineIndexStart, execution.lineIndexEnd });
 
 							{
 								auto result = linesTools.windowFindFirst({ execution.lineIndexStart, execution.lineIndexEnd }, fmt::format("| task scheduled | id={}; name=", taskId));
@@ -544,7 +370,7 @@ namespace la
 				LinesTools::FilterParam<LinesTools::FilterType::Msg, std::string_view, LogLine::MatchType::Contains>("pjsua_core.c") };
 
 			//find all executions
-			for (const auto& execRange : toolRetrieveAllExecutions(linesTools))
+			for (const auto& execRange : CommandsCOMLibUtils::executionsRanges(linesTools))
 			{
 				dialogs.clear();
 
@@ -662,19 +488,16 @@ namespace la
 			if ((flavor != FlavorsRepo::Type::WCSCOMLib) && (flavor != FlavorsRepo::Type::WCSAndroidLogcat))
 				return;
 
-			registerCtx.registerCommand({ "Summary", "Produce a quick summary of the entire logs", {},
-				[](CommandsRepo::IResultCtx& resultCtx, const LinesTools& linesTools, std::string_view) { return cmdSummary(resultCtx, linesTools); } });
-
-			registerCtx.registerCommand({ "Deadlocks", "Isolate every app execution and detect deadlocks in each one", {},
+			registerCtx.registerCommand({ "Deadlocks", "Isolate every app execution and detect deadlocks in each one", {}, false,
 				[](CommandsRepo::IResultCtx& resultCtx, const LinesTools& linesTools, std::string_view) { return cmdDeadlocks(resultCtx, linesTools); } });
 
-			registerCtx.registerCommand({ "Task execution", "Return all lines corresponding to a particular task execution", "task id or name",
+			registerCtx.registerCommand({ "Task execution", "Return all lines corresponding to a particular task execution", "task id or name", true,
 				[](CommandsRepo::IResultCtx& resultCtx, const LinesTools& linesTools, std::string_view cmdParams) { return cmdTaskExecutions(resultCtx, linesTools, cmdParams, { 0, linesTools.lines().size() }); } });
 
-			registerCtx.registerCommand({ "Message flow", "Return all tasks that deal with a particular message", "msg id or networkId",
+			registerCtx.registerCommand({ "Message flow", "Return all tasks that deal with a particular message", "msg id or networkId", false,
 				[](CommandsRepo::IResultCtx& resultCtx, const LinesTools& linesTools, std::string_view cmdParams) { return cmdMsgFlow(resultCtx, linesTools, cmdParams, { 0, linesTools.lines().size() }); } });
 
-			registerCtx.registerCommand({ "SIP flows", "Return all log lines with SIP content", "optional SIP method name filter",
+			registerCtx.registerCommand({ "SIP flows", "Return all log lines with SIP content", "optional SIP method name filter", false,
 				[](CommandsRepo::IResultCtx& resultCtx, const LinesTools& linesTools, std::string_view cmdParams) { return cmdSIPFlows(resultCtx, linesTools, cmdParams); } });
 		};
 
