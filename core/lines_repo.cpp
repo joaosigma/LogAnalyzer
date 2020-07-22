@@ -62,7 +62,6 @@ namespace la
 			if (!jRoot.is_object() || !jRoot.contains("linesIndices") || !jRoot["linesIndices"].is_array())
 				return 0;
 
-			bool firstIndexGroup{ true };
 			for (const auto& jIndexGroup : jRoot["linesIndices"])
 			{
 				if (!jIndexGroup.is_object() || !jIndexGroup.contains("indices"))
@@ -593,7 +592,7 @@ namespace la
 		count = std::min(m_lines.size() - indexStart, count);
 
 		auto path = std::filesystem::u8path(options.filePath);
-		std::ofstream out(path.native().c_str(), std::ios::out | std::ios::binary | std::ios::ate | (options.appendToFile ? 0 : std::ios::trunc));
+		std::ofstream out(path.native().c_str(), std::ios::out | std::ios::binary | std::ios::ate | (options.appendToFile ? static_cast<std::ios_base::openmode>(0) : std::ios::trunc));
 		if (!out.good())
 			return false;
 
@@ -646,7 +645,7 @@ namespace la
 			return false;
 
 		auto path = std::filesystem::u8path(options.filePath);
-		std::ofstream out(path.native().c_str(), std::ios::out | std::ios::binary | std::ios::ate | (options.appendToFile ? 0 : std::ios::trunc));
+		std::ofstream out(path.native().c_str(), std::ios::out | std::ios::binary | std::ios::ate | (options.appendToFile ? static_cast<std::ios_base::openmode>(0) : std::ios::trunc));
 		if (!out.good())
 			return false;
 
@@ -720,7 +719,7 @@ namespace la
 			return false;
 
 		auto path = std::filesystem::u8path(options.filePath);
-		std::ofstream out(path.native().c_str(), std::ios::out | std::ios::binary | std::ios::ate | (options.appendToFile ? 0 : std::ios::trunc));
+		std::ofstream out(path.native().c_str(), std::ios::out | std::ios::binary | std::ios::ate | (options.appendToFile ? static_cast<std::ios_base::openmode>(0) : std::ios::trunc));
 		if (!out.good())
 			return false;
 
