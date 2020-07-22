@@ -47,7 +47,7 @@ namespace la
 			std::regex regMatch(R"(\*\*\*\*\*\* \w* \d\d \d\d\d\d \d\d:\d\d:\d\d \* .+ \* \w+)");
 
 			std::set<std::string_view> buildInfos;
-			linesTools.windowIterate({ 0, lines.size() }, filter, [&inspectionCtx, &regMatch, &buildInfos](size_t, LogLine line, size_t)
+			linesTools.windowIterate({ 0, lines.size() }, filter, [&regMatch, &buildInfos](size_t, LogLine line, size_t)
 			{
 				//just the one at the start of the executions (ignore the ones printed after a log rotation)
 				if (std::regex_match(line.data.start + line.sectionMsg.offset, line.data.start + line.sectionMsg.offset + line.sectionMsg.size, regMatch))
