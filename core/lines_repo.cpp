@@ -88,6 +88,20 @@ namespace la
 		return std::unique_ptr<LinesRepo>{ new LinesRepo(sourceRepo, std::move(logLines)) };
 	}
 
+	std::unique_ptr<LinesRepo> LinesRepo::initRepoFromLineRange(const LinesRepo& sourceRepo, size_t indexStart, size_t count)
+	{
+		if ((count <= 0) || ((indexStart + count) > sourceRepo.m_lines.size()))
+			return nullptr;
+
+		std::vector<LogLine> logLines;
+		logLines.reserve(count);
+
+		for (; count > 0; count--)
+			logLines.push_back(sourceRepo.m_lines[indexStart++]);
+
+		return std::unique_ptr<LinesRepo>{ new LinesRepo(sourceRepo, std::move(logLines)) };
+	}
+
 	size_t LinesRepo::numFiles() const noexcept
 	{
 		return m_repoFiles->numFiles();
