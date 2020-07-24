@@ -84,7 +84,7 @@ namespace la
 
 		if (logLines.empty())
 			return nullptr;
-		
+
 		return std::unique_ptr<LinesRepo>{ new LinesRepo(sourceRepo, std::move(logLines)) };
 	}
 

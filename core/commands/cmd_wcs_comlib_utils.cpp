@@ -132,7 +132,7 @@ namespace la
 
 		return lineIndices;
 	}
-	
+
 	std::optional<int64_t> CommandsCOMLibUtils::taskAtLine(const LinesTools& linesTools, size_t lineIndex)
 	{
 		auto& lines = linesTools.lines();
@@ -162,8 +162,6 @@ namespace la
 	std::vector<size_t> CommandsCOMLibUtils::httpRequestFullExecution(const LinesTools& linesTools, int64_t httpRequestId, LinesTools::LineIndexRange lineRange)
 	{
 		std::vector<size_t> lineIndices;
-
-		auto& lines = linesTools.lines();
 
 		//find where the HTTP request is scheduled
 		size_t taskStartLineIndex;
@@ -213,7 +211,7 @@ namespace la
 
 		if (lineIndex >= lines.size())
 			return std::nullopt;
-		
+
 		auto& targetLine = lines[lineIndex];
 		if (!targetLine.checkSectionTag<LogLine::MatchType::Exact>("COMLib.HTTP"))
 			return std::nullopt;

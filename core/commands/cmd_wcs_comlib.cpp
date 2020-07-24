@@ -135,7 +135,7 @@ namespace la
 					auto lineIndices = CommandsCOMLibUtils::httpRequestFullExecution(linesTools, httpRequestId.value(), lineRange);
 					resultCtx.addLineIndices(lineIndices);
 				}
-				
+
 				return;
 			}
 
