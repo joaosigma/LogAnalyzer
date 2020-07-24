@@ -347,11 +347,66 @@ namespace la
 		}
 
 		{
-			std::set<std::string_view> uniqueTags;
+			std::map<std::string_view, size_t> uniqueTags;
 			for (const auto& line : m_lines)
-				uniqueTags.insert(line.getSectionTag());
+				uniqueTags[line.getSectionTag()]++;
 
-			jSummary["tags"] = uniqueTags;
+			struct Node {
+				std::string_view name;
+				size_t count{ 0 };
+				std::vector<Node> descendents;
+			};
+
+			std::vector<Node> treeTags;
+			for (auto [tagName, tagCount] : uniqueTags)
+			{
+				Node* curNode{ nullptr };
+
+				auto fullName = tagName;
+				while (!fullName.empty())
+				{
+					std::string_view name;
+					{
+						auto nextPos = fullName.find_first_of('.');
+						name = (nextPos != std::string_view::npos) ? fullName.substr(0, nextPos) : fullName;
+					}
+
+					auto& targetNodes = curNode ? curNode->descendents : treeTags;
+
+					auto it = std::find_if(targetNodes.begin(), targetNodes.end(), [&name](const auto& node) { return (node.name == name); });
+					if (it == targetNodes.end())
+					{
+						targetNodes.push_back({ name, 0, {} });
+						it = std::prev(targetNodes.end());
+					}
+
+					it->count += tagCount;
+
+					fullName = (name.size() == fullName.size()) ? "" : fullName.substr(name.size() + 1);
+					curNode = &(*it);
+				}
+			}
+
+			std::function<void(nlohmann::json&, const std::vector<Node>&)> printTags;
+			printTags = [&printTags](nlohmann::json& outJson, const std::vector<Node>& nodes)
+			{
+				for (const auto& node : nodes)
+				{
+					nlohmann::json jNode;
+					jNode["name"] = node.name;
+					jNode["count"] = node.count;
+					if (!node.descendents.empty())
+					{
+						jNode["descendents"] = nlohmann::json::array();
+						printTags(jNode["descendents"], node.descendents);
+					}
+
+					outJson.push_back(std::move(jNode));
+				}
+			};
+
+			jSummary["tags"] = nlohmann::json::array();
+			printTags(jSummary["tags"], treeTags);
 		}
 
 		return jSummary.dump();
