@@ -12,10 +12,14 @@ namespace la
 	{
 		void inspectExecutions(InspectorsRepo::IResultCtx& inspectionCtx, const LinesTools& linesTools)
 		{
+			auto& lines = linesTools.lines();
+
 			for (const auto& range : CommandsCOMLibUtils::executionsRanges(linesTools))
 			{
-				if (!range.empty())
-					inspectionCtx.addExecution(range);
+				if (range.empty())
+					continue;
+
+				inspectionCtx.addExecution(lines[range.start].toStr(), range);
 			}
 		}
 
@@ -30,7 +34,7 @@ namespace la
 
 			linesTools.windowIterate({ 0, lines.size() }, filter, [&inspectionCtx](size_t, LogLine, size_t lineIndex)
 			{
-				inspectionCtx.addWarning("panic", lineIndex);
+				inspectionCtx.addWarning("Panic / Exception", {}, lineIndex);
 				return true;
 			});
 		}
@@ -57,7 +61,7 @@ namespace la
 			});
 
 			for (const auto& info : buildInfos)
-				inspectionCtx.addInfo(info);
+				inspectionCtx.addInfo("Build info", info);
 		}
 
 		void inspectUAs(InspectorsRepo::IResultCtx& inspectionCtx, const LinesTools& linesTools)
@@ -80,7 +84,7 @@ namespace la
 			});
 
 			for (const auto& ua : userAgents)
-				inspectionCtx.addInfo(ua);
+				inspectionCtx.addInfo("User-Agent", ua);
 		}
 	}
 

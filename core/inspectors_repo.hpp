@@ -14,15 +14,15 @@ namespace la
 	public:
 		struct IResultCtx
 		{
-			virtual void addInfo(std::string_view msg) = 0;
-			virtual void addInfo(std::string_view msg, size_t lineIndex) = 0;
-			virtual void addInfo(std::string_view msg, LinesTools::LineIndexRange lineRange) = 0;
+			virtual void addInfo(std::string_view ctx, std::string_view msg) = 0;
+			virtual void addInfo(std::string_view ctx, std::string_view msg, size_t lineIndex) = 0;
+			virtual void addInfo(std::string_view ctx, std::string_view msg, LinesTools::LineIndexRange lineRange) = 0;
 
-			virtual void addWarning(std::string_view msg) = 0;
-			virtual void addWarning(std::string_view msg, size_t lineIndex) = 0;
-			virtual void addWarning(std::string_view msg, LinesTools::LineIndexRange lineRange) = 0;
+			virtual void addWarning(std::string_view ctx, std::string_view msg) = 0;
+			virtual void addWarning(std::string_view ctx, std::string_view msg, size_t lineIndex) = 0;
+			virtual void addWarning(std::string_view ctx, std::string_view msg, LinesTools::LineIndexRange lineRange) = 0;
 
-			virtual void addExecution(LinesTools::LineIndexRange lineRange) = 0;
+			virtual void addExecution(std::string_view msg, LinesTools::LineIndexRange lineRange) = 0;
 		};
 
 		struct InspectorInfo

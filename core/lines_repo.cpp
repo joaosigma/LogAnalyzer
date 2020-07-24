@@ -390,94 +390,108 @@ namespace la
 			: public InspectorsRepo::IResultCtx
 		{
 		public:
+			ResultCtx()
+			{
+				jResult["infos"] = nlohmann::json::array();
+				jResult["warns"] = nlohmann::json::array();
+				jResult["executions"] = nlohmann::json::array();
+			}
+
 			std::string toJson() const
 			{
 				return jResult.dump();
 			}
 
-			void addInfo(std::string_view msg) override
+			void addInfo(std::string_view ctx, std::string_view msg) override
 			{
 				if (msg.empty())
 					return;
 
-				nlohmann::json jNewInfo;
-				jNewInfo["info"]["msg"] = msg;
+				nlohmann::json jInfo;
+				jInfo["ctx"] = ctx;
+				jInfo["msg"] = msg;
 
-				jResult.push_back(std::move(jNewInfo));
+				jResult["infos"].push_back(std::move(jInfo));
 			}
 
-			void addInfo(std::string_view msg, size_t lineIndex) override
+			void addInfo(std::string_view ctx, std::string_view msg, size_t lineIndex) override
 			{
 				if (msg.empty())
 					return;
 
-				nlohmann::json jNewInfo;
-				jNewInfo["info"]["msg"] = msg;
-				jNewInfo["info"]["lineIndex"] = lineIndex;
+				nlohmann::json jInfo;
+				jInfo["ctx"] = ctx;
+				jInfo["msg"] = msg;
+				jInfo["lineIndex"] = lineIndex;
 
-				jResult.push_back(std::move(jNewInfo));
+				jResult["infos"].push_back(std::move(jInfo));
 			}
 
-			void addInfo(std::string_view msg, LinesTools::LineIndexRange lineRange) override
+			void addInfo(std::string_view ctx, std::string_view msg, LinesTools::LineIndexRange lineRange) override
 			{
 				if (msg.empty())
 					return;
 
-				nlohmann::json jNewInfo;
-				jNewInfo["info"]["msg"] = msg;
-				jNewInfo["info"]["lineRange"]["start"] = lineRange.start;
-				jNewInfo["info"]["lineRange"]["end"] = lineRange.end;
+				nlohmann::json jInfo;
+				jInfo["ctx"] = ctx;
+				jInfo["msg"] = msg;
+				jInfo["lineRange"]["start"] = lineRange.start;
+				jInfo["lineRange"]["end"] = lineRange.end;
 
-				jResult.push_back(std::move(jNewInfo));
+				jResult["infos"].push_back(std::move(jInfo));
 			}
 
-			void addWarning(std::string_view msg) override
+			void addWarning(std::string_view ctx, std::string_view msg) override
 			{
 				if (msg.empty())
 					return;
 
-				nlohmann::json jNewWarn;
-				jNewWarn["warn"]["msg"] = msg;
+				nlohmann::json jWarn;
+				jWarn["ctx"] = ctx;
+				jWarn["msg"] = msg;
 
-				jResult.push_back(std::move(jNewWarn));
+				jResult["warns"].push_back(std::move(jWarn));
 			}
 
-			void addWarning(std::string_view msg, size_t lineIndex) override
+			void addWarning(std::string_view ctx, std::string_view msg, size_t lineIndex) override
 			{
 				if (msg.empty())
 					return;
 
-				nlohmann::json jNewWarn;
-				jNewWarn["warn"]["msg"] = msg;
-				jNewWarn["warn"]["lineIndex"] = lineIndex;
+				nlohmann::json jWarn;
+				jWarn["ctx"] = ctx;
+				jWarn["msg"] = msg;
+				jWarn["lineIndex"] = lineIndex;
 
-				jResult.push_back(std::move(jNewWarn));
+				jResult["warns"].push_back(std::move(jWarn));
 			}
 
-			void addWarning(std::string_view msg, LinesTools::LineIndexRange lineRange) override
+			void addWarning(std::string_view ctx, std::string_view msg, LinesTools::LineIndexRange lineRange) override
 			{
 				if (msg.empty())
 					return;
 
-				nlohmann::json jNewWarn;
-				jNewWarn["warn"]["msg"] = msg;
-				jNewWarn["warn"]["lineRange"]["start"] = lineRange.start;
-				jNewWarn["warn"]["lineRange"]["end"] = lineRange.end;
+				nlohmann::json jWarn;
+				jWarn["ctx"] = ctx;
+				jWarn["msg"] = msg;
+				jWarn["lineRange"]["start"] = lineRange.start;
+				jWarn["lineRange"]["end"] = lineRange.end;
 
-				jResult.push_back(std::move(jNewWarn));
+				jResult["warns"].push_back(std::move(jWarn));
 			}
 
-			void addExecution(LinesTools::LineIndexRange lineRange) override
+			void addExecution(std::string_view msg, LinesTools::LineIndexRange lineRange) override
 			{
-				nlohmann::json jNewExec;
-				jNewExec["execution"]["lineRange"]["start"] = lineRange.start;
-				jNewExec["execution"]["lineRange"]["end"] = lineRange.end;
+				nlohmann::json jExec;
+				jExec["msg"] = msg;
+				jExec["lineRange"]["start"] = lineRange.start;
+				jExec["lineRange"]["end"] = lineRange.end;
 
-				jResult.push_back(std::move(jNewExec));
+				jResult["executions"].push_back(std::move(jExec));
 			}
 
 		private:
-			nlohmann::json jResult{ nlohmann::json::array() };
+			nlohmann::json jResult{ nlohmann::json::object() };
 		};
 
 		ResultCtx resultCtx{  };
