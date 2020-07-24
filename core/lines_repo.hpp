@@ -94,6 +94,7 @@ namespace la
 		static std::unique_ptr<LinesRepo> initRepoFolder(FlavorsRepo::Type type, std::string_view folderPath, std::string_view fileNameFilterRegex);
 
 		static std::unique_ptr<LinesRepo> initRepoFromCommnand(const LinesRepo& sourceRepo, std::string_view commandResult);
+		static std::unique_ptr<LinesRepo> initRepoFromLineRange(const LinesRepo& sourceRepo, size_t indexStart, size_t count);
 
 	public:
 		~LinesRepo() = default;

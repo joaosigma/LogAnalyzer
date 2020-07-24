@@ -233,6 +233,15 @@ wclLinesRepo* la_init_repo_command(wclLinesRepo* repo, laStrFixedUTF8 commandRes
 	return (newRepo ? reinterpret_cast<wclLinesRepo*>(newRepo.release()) : nullptr);
 }
 
+wclLinesRepo* la_init_repo_line_range(wclLinesRepo* repo, int indexStart, int count)
+{
+	if (!repo)
+		return nullptr;
+
+	auto newRepo = la::LinesRepo::initRepoFromLineRange(*reinterpret_cast<la::LinesRepo*>(repo), static_cast<size_t>(indexStart), static_cast<size_t>(count));
+	return (newRepo ? reinterpret_cast<wclLinesRepo*>(newRepo.release()) : nullptr);
+}
+
 void la_repo_destroy(wclLinesRepo* repo)
 {
 	if (!repo)
