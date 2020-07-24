@@ -270,7 +270,7 @@ int main(int argc, char* argv[])
 			auto pStack = fmt::format("\x1B[34m[{:*>{}}]", "", ctx.repoStack.size());
 			auto pSearch = ctx.search.isValid() ? fmt::format("\x1B[92msearch: \x1B[32m\"{}\" ", ctx.search.query()) : "";
 			auto pCmd = !ctx.cmd.result.empty() ? fmt::format("\x1B[92mcmd: \x1B[32m\"{}\" ", ctx.cmd.name) : "";
-			
+
 			std::cout << fmt::format("{} \x1B[92mtag: \x1B[32m\"{}\" {}{}\x1B[31m\\>\x1B[0m ", pStack, ctx.tag, pSearch, pCmd);
 		}
 
