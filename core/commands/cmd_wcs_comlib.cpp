@@ -45,15 +45,7 @@ namespace la
 			return lineIndices;
 		}
 
-		void cmdTaskExecution(CommandsRepo::IResultCtx& resultCtx, const LinesTools& linesTools, int64_t taskId, LinesTools::LineIndexRange lineRange)
-		{
-			auto lineIndices = CommandsCOMLibUtils::taskFullExecution(linesTools, taskId, lineRange);
-			std::sort(lineIndices.begin(), lineIndices.end());
-
-			resultCtx.addLineIndices(lineIndices);
-		}
-
-		void cmdTaskExecutions(CommandsRepo::IResultCtx& resultCtx, const LinesTools& linesTools, std::string_view params, LinesTools::LineIndexRange lineRange)
+		void cmdTaskExecution(CommandsRepo::IResultCtx& resultCtx, const LinesTools& linesTools, std::string_view params, LinesTools::LineIndexRange lineRange)
 		{
 			auto& lines = linesTools.lines();
 			if (lines.empty())
@@ -68,7 +60,10 @@ namespace la
 
 				auto taskId = CommandsCOMLibUtils::taskAtLine(linesTools, lineIndex);
 				if (taskId.has_value())
-					cmdTaskExecution(resultCtx, linesTools, taskId.value(), lineRange);
+				{
+					auto lineIndices = CommandsCOMLibUtils::taskFullExecution(linesTools, taskId.value(), lineRange);
+					resultCtx.addLineIndices(lineIndices);
+				}
 
 				return;
 			}
@@ -78,7 +73,9 @@ namespace la
 				int64_t taskId;
 				if (auto [p, ec] = std::from_chars(params.data(), params.data() + params.size(), taskId); ec == std::errc())
 				{
-					cmdTaskExecution(resultCtx, linesTools, taskId, lineRange);
+					auto lineIndices = CommandsCOMLibUtils::taskFullExecution(linesTools, taskId, lineRange);
+					resultCtx.addLineIndices(lineIndices);
+
 					return;
 				}
 			}
@@ -111,16 +108,46 @@ namespace la
 				if (taskId.has_value())
 				{
 					auto lineIndices = CommandsCOMLibUtils::taskFullExecution(linesTools, *taskId, { lineRange.start + linesProcessed - 1, lineRange.end });
-					if (!lineIndices.empty())
-					{
-						std::sort(lineIndices.begin(), lineIndices.end());
-						resultCtx.addLineIndices(lineIndices);
-					}
+					resultCtx.addLineIndices(lineIndices);
 				}
 
 				lineRange.start += linesProcessed;
 				assert(lineRange.start <= lineRange.end);
 			}
+		}
+
+		void cmdHTTPRequestExecution(CommandsRepo::IResultCtx& resultCtx, const LinesTools& linesTools, std::string_view params, LinesTools::LineIndexRange lineRange)
+		{
+			auto& lines = linesTools.lines();
+			if (lines.empty())
+				return;
+
+			//we support line execution
+			if ((params.size() >= 2) && (params[0] == ':') && (params[1] != ':'))
+			{
+				size_t lineIndex;
+				if (auto [p, ec] = std::from_chars(params.data() + 1, params.data() + params.size(), lineIndex); ec != std::errc())
+					return;
+
+				auto httpRequestId = CommandsCOMLibUtils::httpRequestAtLine(linesTools, lineIndex);
+				if (httpRequestId.has_value())
+				{
+					auto lineIndices = CommandsCOMLibUtils::httpRequestFullExecution(linesTools, httpRequestId.value(), lineRange);
+					resultCtx.addLineIndices(lineIndices);
+				}
+				
+				return;
+			}
+
+			int64_t httpRequestId;
+			if (auto [p, ec] = std::from_chars(params.data(), params.data() + params.size(), httpRequestId); ec == std::errc())
+			{
+				auto lineIndices = CommandsCOMLibUtils::httpRequestFullExecution(linesTools, httpRequestId, lineRange);
+				resultCtx.addLineIndices(lineIndices);
+				return;
+			}
+
+			return;
 		}
 
 		void cmdDeadlocks(CommandsRepo::IResultCtx& resultCtx, const LinesTools& linesTools)
@@ -492,7 +519,10 @@ namespace la
 				[](CommandsRepo::IResultCtx& resultCtx, const LinesTools& linesTools, std::string_view) { return cmdDeadlocks(resultCtx, linesTools); } });
 
 			registerCtx.registerCommand({ "Task execution", "Return all lines corresponding to a particular task execution", "task id or name", true,
-				[](CommandsRepo::IResultCtx& resultCtx, const LinesTools& linesTools, std::string_view cmdParams) { return cmdTaskExecutions(resultCtx, linesTools, cmdParams, { 0, linesTools.lines().size() }); } });
+				[](CommandsRepo::IResultCtx& resultCtx, const LinesTools& linesTools, std::string_view cmdParams) { return cmdTaskExecution(resultCtx, linesTools, cmdParams, { 0, linesTools.lines().size() }); } });
+
+			registerCtx.registerCommand({ "HTTP request", "Return all lines corresponding to a particular HTTP request execution", "HTTP request id", true,
+				[](CommandsRepo::IResultCtx& resultCtx, const LinesTools& linesTools, std::string_view cmdParams) { return cmdHTTPRequestExecution(resultCtx, linesTools, cmdParams, { 0, linesTools.lines().size() }); } });
 
 			registerCtx.registerCommand({ "Message flow", "Return all tasks that deal with a particular message", "msg id or networkId", false,
 				[](CommandsRepo::IResultCtx& resultCtx, const LinesTools& linesTools, std::string_view cmdParams) { return cmdMsgFlow(resultCtx, linesTools, cmdParams, { 0, linesTools.lines().size() }); } });
