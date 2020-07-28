@@ -98,6 +98,7 @@ LA_API_VISIBILITY wclLinesRepo* la_init_repo_folder_filter(laFlavorType flavor, 
 
 LA_API_VISIBILITY wclLinesRepo* la_init_repo_command(wclLinesRepo* repo, laStrFixedUTF8 commandResult);
 LA_API_VISIBILITY wclLinesRepo* la_init_repo_line_range(wclLinesRepo* repo, int indexStart, int count);
+LA_API_VISIBILITY wclLinesRepo* la_init_repo_tags(wclLinesRepo* repo, laStrFixedUTF8* tags, int tagsSize);
 
 LA_API_VISIBILITY void la_repo_destroy(wclLinesRepo* repo);
 
