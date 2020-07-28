@@ -459,7 +459,7 @@ namespace la
 
 			void addInfo(std::string_view ctx, std::string_view msg) override
 			{
-				if (msg.empty())
+				if (ctx.empty() && msg.empty())
 					return;
 
 				nlohmann::json jInfo;
@@ -471,7 +471,7 @@ namespace la
 
 			void addInfo(std::string_view ctx, std::string_view msg, size_t lineIndex) override
 			{
-				if (msg.empty())
+				if (ctx.empty() && msg.empty())
 					return;
 
 				nlohmann::json jInfo;
@@ -484,7 +484,7 @@ namespace la
 
 			void addInfo(std::string_view ctx, std::string_view msg, LinesTools::LineIndexRange lineRange) override
 			{
-				if (msg.empty())
+				if (ctx.empty() && msg.empty())
 					return;
 
 				nlohmann::json jInfo;
@@ -498,7 +498,7 @@ namespace la
 
 			void addWarning(std::string_view ctx, std::string_view msg) override
 			{
-				if (msg.empty())
+				if (ctx.empty() && msg.empty())
 					return;
 
 				nlohmann::json jWarn;
@@ -510,7 +510,7 @@ namespace la
 
 			void addWarning(std::string_view ctx, std::string_view msg, size_t lineIndex) override
 			{
-				if (msg.empty())
+				if (ctx.empty() && msg.empty())
 					return;
 
 				nlohmann::json jWarn;
@@ -523,7 +523,7 @@ namespace la
 
 			void addWarning(std::string_view ctx, std::string_view msg, LinesTools::LineIndexRange lineRange) override
 			{
-				if (msg.empty())
+				if (ctx.empty() && msg.empty())
 					return;
 
 				nlohmann::json jWarn;
