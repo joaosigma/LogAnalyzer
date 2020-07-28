@@ -580,7 +580,10 @@ namespace la
 				: m_jsonOutput{ jsonOutput }
 				, m_jsonLineIndices{ jsonLineIndices }
 				, m_jsonNetworkPackets{ jsonNetworkPackets }
-			{ }
+			{
+				m_jsonLineIndices = nlohmann::json::array();
+				m_jsonNetworkPackets = nlohmann::json::array();
+			}
 
 			nlohmann::json& json() noexcept override
 			{
@@ -625,6 +628,7 @@ namespace la
 				jNewPacket["timestamp"] = timestamp;
 
 				auto& jEndpoints = jNewPacket["endpoints"];
+				jEndpoints = nlohmann::json::array();
 				jEndpoints.push_back(srcAddress);
 				jEndpoints.push_back(dstAddress);
 

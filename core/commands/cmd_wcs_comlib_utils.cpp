@@ -27,7 +27,7 @@ namespace la
 			if (lastIndex < curIndex) //avoid storing empty executions
 				ranges.push_back({ lastIndex, curIndex });
 
-			lastIndex = curIndex + 1; //skip the log line itself
+			lastIndex = curIndex;
 		}
 
 		return ranges;

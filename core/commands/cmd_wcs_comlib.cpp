@@ -282,6 +282,7 @@ namespace la
 			//create a json with all the necessary information
 
 			auto& jResult = resultCtx.json();
+			jResult = nlohmann::json::array();
 
 			for (const auto& exec : executions)
 			{
@@ -297,6 +298,8 @@ namespace la
 				jExec["tasks"]["data"] = nlohmann::json::array();
 
 				auto& jTaskInfo = jExec["tasks"]["data"];
+				jTaskInfo = nlohmann::json::array();
+
 				for (const auto& [taskId, taskInfo] : exec.tasks.info)
 				{
 					nlohmann::json jInfo;
@@ -389,6 +392,44 @@ namespace la
 				std::vector<size_t> lineIndices;
 			};
 
+			//we support line execution
+			std::optional<std::string_view> filterDiagCallId;
+			if ((params.size() >= 2) && (params[0] == ':') && (params[1] != ':'))
+			{
+				auto& lines = linesTools.lines();
+				if (lines.empty())
+					return;
+
+				size_t lineIndex;
+				if (auto [p, ec] = std::from_chars(params.data() + 1, params.data() + params.size(), lineIndex); ec != std::errc())
+					return;
+
+				if (lineIndex >= lines.size())
+					return;
+
+				LinesTools::FilterCollection filter{
+					LinesTools::FilterParam<LinesTools::FilterType::ThreadId, int32_t>(lines[lineIndex].threadId),
+					LinesTools::FilterParam<LinesTools::FilterType::Tag, std::string_view>("COMLib.PJSIP"),
+					LinesTools::FilterParam<LinesTools::FilterType::Msg, std::string_view, LogLine::MatchType::Contains>("pjsua_core.c") };
+
+				linesTools.iterateBackwards(lineIndex, filter, [&filterDiagCallId, &regexs](size_t, LogLine line, size_t)
+				{
+					auto content = line.getSectionMsg();
+
+					std::cmatch matches;
+					if (!std::regex_search(content.data(), content.data() + content.size(), matches, regexs.extractCallID))
+						return true;
+
+					filterDiagCallId = std::string_view{ matches[1].first, static_cast<size_t>(matches[1].second - matches[1].first) };
+					return false;
+				});
+
+				if (!filterDiagCallId.has_value())
+					return;
+
+				params = {}; //to prevent filtering further down
+			}
+
 			std::unordered_map<std::string_view, DialogData> dialogs;
 
 			const LinesTools::FilterCollection filter{
@@ -401,7 +442,7 @@ namespace la
 			{
 				dialogs.clear();
 
-				linesTools.windowIterate({ execRange.start, execRange.end }, filter, [&regexs, &dialogs, &resultCtx](size_t, LogLine line, size_t lineIndex)
+				linesTools.windowIterate({ execRange.start, execRange.end }, filter, [&regexs, &dialogs, &filterDiagCallId, &resultCtx](size_t, LogLine line, size_t lineIndex)
 				{
 					auto content = line.getSectionMsg();
 
@@ -428,6 +469,10 @@ namespace la
 							return true;
 
 						callId = std::string_view{ matches[1].first, static_cast<size_t>(matches[1].second - matches[1].first) };
+
+						//filter
+						if (filterDiagCallId.has_value() && (filterDiagCallId.value() != callId))
+							return true;
 					}
 
 					//gather info into a dialog
@@ -477,11 +522,18 @@ namespace la
 				});
 
 				//create json with results for this execution
+				if (!dialogs.empty())
 				{
-					nlohmann::json jResult;
-					jResult["lineIndexRange"] = { execRange.start, execRange.end };
+					auto& jResult = resultCtx.json();
+					if (!jResult.is_array())
+						jResult = nlohmann::json::array();
 
-					auto& jDialogs = jResult["dialogs"];
+					nlohmann::json jExec;
+					jExec["lineIndexRange"] = { execRange.start, execRange.end };
+
+					auto& jDialogs = jExec["dialogs"];
+					jDialogs = nlohmann::json::array();
+
 					for (const auto& [callId, diag] : dialogs)
 					{
 						if (!params.empty() && (diag.method != params))
@@ -498,7 +550,7 @@ namespace la
 						jDialogs.push_back(std::move(jInfo));
 					}
 
-					resultCtx.json().push_back(std::move(jResult));
+					jResult.push_back(std::move(jExec));
 				}
 			}
 		}
@@ -527,7 +579,7 @@ namespace la
 			registerCtx.registerCommand({ "Message flow", "Return all tasks that deal with a particular message", "msg id or networkId", false,
 				[](CommandsRepo::IResultCtx& resultCtx, const LinesTools& linesTools, std::string_view cmdParams) { return cmdMsgFlow(resultCtx, linesTools, cmdParams, { 0, linesTools.lines().size() }); } });
 
-			registerCtx.registerCommand({ "SIP flows", "Return all log lines with SIP content", "optional SIP method name filter", false,
+			registerCtx.registerCommand({ "SIP flows", "Return all log lines with SIP content", "optional SIP method name filter", true,
 				[](CommandsRepo::IResultCtx& resultCtx, const LinesTools& linesTools, std::string_view cmdParams) { return cmdSIPFlows(resultCtx, linesTools, cmdParams); } });
 		};
 
