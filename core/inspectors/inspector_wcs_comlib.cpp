@@ -32,9 +32,9 @@ namespace la
 						LinesTools::FilterParam<LinesTools::FilterType::Tag, std::string_view>("COMLib.Debug"),
 						LinesTools::FilterParam<LinesTools::FilterType::Method, std::string_view>("panic") };
 
-			linesTools.windowIterate({ 0, lines.size() }, filter, [&inspectionCtx](size_t, LogLine, size_t lineIndex)
+			linesTools.windowIterate({ 0, lines.size() }, filter, [&inspectionCtx](size_t, LogLine line, size_t lineIndex)
 			{
-				inspectionCtx.addWarning("Panic / Exception", {}, lineIndex);
+				inspectionCtx.addWarning("Panic / Exception", line.getSectionMsg(), lineIndex);
 				return true;
 			});
 		}
