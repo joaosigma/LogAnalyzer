@@ -242,6 +242,18 @@ wclLinesRepo* la_init_repo_line_range(wclLinesRepo* repo, int indexStart, int co
 	return (newRepo ? reinterpret_cast<wclLinesRepo*>(newRepo.release()) : nullptr);
 }
 
+wclLinesRepo* la_init_repo_tags(wclLinesRepo* repo, laStrFixedUTF8* tags, int tagsSize)
+{
+	if (!repo || !tags || (tagsSize <= 0))
+		return nullptr;
+
+	std::vector<std::string_view> tagsViews;
+	std::transform(tags, tags + tagsSize, std::back_inserter(tagsViews), [](laStrFixedUTF8 tag) { return std::string_view{ tag.data, static_cast<size_t>(tag.size) }; });
+
+	auto newRepo = la::LinesRepo::initRepoFromTags(*reinterpret_cast<la::LinesRepo*>(repo), tagsViews);
+	return (newRepo ? reinterpret_cast<wclLinesRepo*>(newRepo.release()) : nullptr);
+}
+
 void la_repo_destroy(wclLinesRepo* repo)
 {
 	if (!repo)

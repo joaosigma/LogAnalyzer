@@ -95,6 +95,7 @@ namespace la
 
 		static std::unique_ptr<LinesRepo> initRepoFromCommnand(const LinesRepo& sourceRepo, std::string_view commandResult);
 		static std::unique_ptr<LinesRepo> initRepoFromLineRange(const LinesRepo& sourceRepo, size_t indexStart, size_t count);
+		static std::unique_ptr<LinesRepo> initRepoFromTags(const LinesRepo& sourceRepo, const std::vector<std::string_view>& tags);
 
 	public:
 		~LinesRepo() = default;

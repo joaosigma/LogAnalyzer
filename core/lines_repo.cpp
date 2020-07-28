@@ -102,6 +102,51 @@ namespace la
 		return std::unique_ptr<LinesRepo>{ new LinesRepo(sourceRepo, std::move(logLines)) };
 	}
 
+	std::unique_ptr<LinesRepo> LinesRepo::initRepoFromTags(const LinesRepo& sourceRepo, const std::vector<std::string_view>& tags)
+	{
+		std::vector<std::string_view> matchStarts, matchExact;
+		for (const auto& tag : tags)
+		{
+			if (tag.empty())
+				continue;
+
+			if (tag.back() == '*')
+				matchStarts.push_back(tag.substr(0, tag.size() - 1));
+			else
+				matchExact.push_back(tag);
+		}
+
+		if (matchStarts.empty() && matchExact.empty())
+			return nullptr;
+
+		std::tuple<std::string_view, bool> lastResult;
+
+		std::vector<LogLine> logLines;
+		for (const auto& line : sourceRepo.m_lines)
+		{
+			auto curTag = line.getSectionTag();
+
+			bool match = false;
+			if (std::get<0>(lastResult) == curTag)
+			{
+				match = std::get<1>(lastResult);
+			}
+			else
+			{
+				match = std::find(matchExact.begin(), matchExact.end(), curTag) != matchExact.end();
+				if (!match)
+					match = std::find_if(matchStarts.begin(), matchStarts.end(), [&line](const auto& tag) { return line.checkSectionTag<LogLine::MatchType::StartsWith>(tag); }) != matchStarts.end();
+
+				lastResult = { curTag, match };
+			}
+
+			if (match)
+				logLines.push_back(line);
+		}
+
+		return std::unique_ptr<LinesRepo>{ new LinesRepo(sourceRepo, std::move(logLines)) };
+	}
+
 	size_t LinesRepo::numFiles() const noexcept
 	{
 		return m_repoFiles->numFiles();
