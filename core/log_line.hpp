@@ -144,6 +144,23 @@ namespace la
 			else
 				return false;
 		}
+
+		template<MatchType TMatchType>
+		bool checkSectionParams(std::string_view params) const noexcept
+		{
+			std::string_view curParams{ data.start + sectionParams.offset, sectionParams.size };
+
+			if constexpr (TMatchType == MatchType::Exact)
+				return (curParams == params);
+			else if constexpr (TMatchType == MatchType::StartsWith)
+				return ((curParams.size() >= params.size()) && (curParams.compare(0, params.size(), params) == 0));
+			else if constexpr (TMatchType == MatchType::EndsWith)
+				return ((params.size() > curParams.size()) ? false : (curParams.compare(curParams.length() - params.length(), params.length(), params) == 0));
+			else if constexpr (TMatchType == MatchType::Contains)
+				return (curParams.find(params) != std::string_view::npos);
+			else
+				return false;
+		}
 	};
 
 	static_assert(std::is_trivial_v<LogLine>);

@@ -27,11 +27,11 @@ namespace la
 				if (!cb(lines[lineIndex]))
 					continue;
 
-				auto taskId = CommandsCOMLibUtils::taskAtLine(linesTools, lineIndex);
-				if (!taskId.has_value())
+				auto taskLineInfo = CommandsCOMLibUtils::taskAtLine(linesTools, lineIndex);
+				if (!taskLineInfo.has_value())
 					continue;
 
-				auto taskLineIndices = CommandsCOMLibUtils::taskFullExecution(linesTools, taskId.value(), { 0, lines.size() });
+				auto taskLineIndices = CommandsCOMLibUtils::taskFullExecution(linesTools, taskLineInfo.value().taskId, { 0, lines.size() });
 				if (taskLineIndices.empty())
 					continue;
 
@@ -58,10 +58,10 @@ namespace la
 				if (auto [p, ec] = std::from_chars(params.data() + 1, params.data() + params.size(), lineIndex); ec != std::errc())
 					return;
 
-				auto taskId = CommandsCOMLibUtils::taskAtLine(linesTools, lineIndex);
-				if (taskId.has_value())
+				auto taskLineInfo = CommandsCOMLibUtils::taskAtLine(linesTools, lineIndex);
+				if (taskLineInfo.has_value())
 				{
-					auto lineIndices = CommandsCOMLibUtils::taskFullExecution(linesTools, taskId.value(), lineRange);
+					auto lineIndices = CommandsCOMLibUtils::taskFullExecution(linesTools, taskLineInfo.value().taskId, { taskLineInfo.value().firstLineIndex, lineRange.end });
 					resultCtx.addLineIndices(lineIndices);
 				}
 
@@ -129,10 +129,10 @@ namespace la
 				if (auto [p, ec] = std::from_chars(params.data() + 1, params.data() + params.size(), lineIndex); ec != std::errc())
 					return;
 
-				auto httpRequestId = CommandsCOMLibUtils::httpRequestAtLine(linesTools, lineIndex);
-				if (httpRequestId.has_value())
+				auto httpLineInfo = CommandsCOMLibUtils::httpRequestAtLine(linesTools, lineIndex);
+				if (httpLineInfo.has_value())
 				{
-					auto lineIndices = CommandsCOMLibUtils::httpRequestFullExecution(linesTools, httpRequestId.value(), lineRange);
+					auto lineIndices = CommandsCOMLibUtils::httpRequestFullExecution(linesTools, httpLineInfo.value().httpRequestId, { httpLineInfo.value().firstLineIndex, lineRange.end });
 					resultCtx.addLineIndices(lineIndices);
 				}
 

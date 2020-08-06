@@ -11,7 +11,7 @@ namespace la
 	{
 		auto execs = linesTools.windowFindAll({ 0, linesTools.lines().size() }, R"(|COMLib:  | ******************************* log start *******************************)");
 
-		if (!execs.empty() && (execs.front() == 0)) //skip if logs start on an execution
+		if ((execs.size() == 1) && (execs.front() == 0)) //skip if logs are a single execution
 			execs.erase(execs.begin());
 
 		if (execs.empty()) //there's just one big execution
@@ -29,6 +29,8 @@ namespace la
 
 			lastIndex = curIndex;
 		}
+
+		ranges.push_back({ lastIndex, linesTools.lines().size() });
 
 		return ranges;
 	}
@@ -133,30 +135,50 @@ namespace la
 		return lineIndices;
 	}
 
-	std::optional<int64_t> CommandsCOMLibUtils::taskAtLine(const LinesTools& linesTools, size_t lineIndex)
+	std::optional<CommandsCOMLibUtils::TaskLineInfo> CommandsCOMLibUtils::taskAtLine(const LinesTools& linesTools, size_t lineIndex)
 	{
 		auto& lines = linesTools.lines();
 
 		if (lineIndex >= lines.size())
 			return std::nullopt;
 
-		LinesTools::FilterCollection filter{
-				LinesTools::FilterParam<LinesTools::FilterType::ThreadId, int32_t>(lines[lineIndex].threadId),
-				LinesTools::FilterParam<LinesTools::FilterType::Tag, std::string_view>("COMLib.Scheduler"),
-				LinesTools::FilterParam<LinesTools::FilterType::Msg, std::string_view>("task executing") };
-
-		std::optional<int64_t> taskId;
-		linesTools.iterateBackwards(lineIndex, filter, [&taskId](size_t, LogLine line, size_t)
+		std::optional<TaskLineInfo> taskLineInfo;
 		{
-			int64_t id;
-			if (!line.paramExtractAs<int64_t>("id", id))
-				return true;
+			LinesTools::FilterCollection filter{
+					LinesTools::FilterParam<LinesTools::FilterType::ThreadId, int32_t>(lines[lineIndex].threadId),
+					LinesTools::FilterParam<LinesTools::FilterType::Tag, std::string_view>("COMLib.Scheduler"),
+					LinesTools::FilterParam<LinesTools::FilterType::Msg, std::string_view>("task executing") };
 
-			taskId = id;
+			linesTools.iterateBackwards(lineIndex, filter, [&taskLineInfo](size_t, LogLine line, size_t lineIndex)
+			{
+				int64_t id;
+				if (!line.paramExtractAs<int64_t>("id", id))
+					return true;
+
+				taskLineInfo = { id, lineIndex };
+				return false;
+			});
+		}
+
+		if (!taskLineInfo.has_value())
+			return std::nullopt;
+
+		//find the task first line index
+
+		auto paramCheck = fmt::format("id={}; name=", taskLineInfo.value().taskId);
+
+		LinesTools::FilterCollection filter{
+				LinesTools::FilterParam<LinesTools::FilterType::Tag, std::string_view>("COMLib.Scheduler"),
+				LinesTools::FilterParam<LinesTools::FilterType::Msg, std::string_view>("task scheduled"),
+				LinesTools::FilterParam<LinesTools::FilterType::Params, std::string_view, LogLine::MatchType::StartsWith>(paramCheck) };
+
+		linesTools.iterateBackwards(taskLineInfo.value().firstLineIndex, filter, [&taskLineInfo](size_t, LogLine, size_t lineIndex)
+		{
+			taskLineInfo.value().firstLineIndex = lineIndex;
 			return false;
 		});
 
-		return taskId;
+		return taskLineInfo;
 	}
 
 	std::vector<size_t> CommandsCOMLibUtils::httpRequestFullExecution(const LinesTools& linesTools, int64_t httpRequestId, LinesTools::LineIndexRange lineRange)
@@ -205,7 +227,7 @@ namespace la
 		return lineIndices;
 	}
 
-	std::optional<int64_t> CommandsCOMLibUtils::httpRequestAtLine(const LinesTools& linesTools, size_t lineIndex)
+	std::optional<CommandsCOMLibUtils::HTTPLineInfo> CommandsCOMLibUtils::httpRequestAtLine(const LinesTools& linesTools, size_t lineIndex)
 	{
 		auto& lines = linesTools.lines();
 
@@ -216,19 +238,42 @@ namespace la
 		if (!targetLine.checkSectionTag<LogLine::MatchType::Exact>("COMLib.HTTP"))
 			return std::nullopt;
 
+		std::optional<HTTPLineInfo> httpLineInfo;
+
 		if (targetLine.checkSectionMethod<LogLine::MatchType::Exact>("curlDebugCallback"))
 		{
 			int64_t httpRequestId;
 			if (targetLine.paramExtractAs<int64_t>("request", httpRequestId))
-				return httpRequestId;
+				httpLineInfo = { httpRequestId, lineIndex };
 		}
 		else if (targetLine.checkSectionMethod<LogLine::MatchType::Exact>("asioProcessDispatcher") || targetLine.checkSectionMethod<LogLine::MatchType::Exact>("asioProcessTerminated"))
 		{
 			int64_t httpRequestId;
 			if (targetLine.paramExtractAs<int64_t>("requestId", httpRequestId))
-				return httpRequestId;
+				httpLineInfo = { httpRequestId, lineIndex };
+			else if (targetLine.paramExtractAs<int64_t>("id", httpRequestId))
+				httpLineInfo = { httpRequestId, lineIndex };
 		}
 
-		return std::nullopt;
+		if (!httpLineInfo.has_value())
+			return std::nullopt;
+
+		//find the task first line index
+
+		auto paramCheck = fmt::format("id={}; method=", httpLineInfo.value().httpRequestId);
+
+		LinesTools::FilterCollection filter{
+				LinesTools::FilterParam<LinesTools::FilterType::Tag, std::string_view>("COMLib.HTTP"),
+				LinesTools::FilterParam<LinesTools::FilterType::Method, std::string_view>("asioProcessDispatcher"),
+				LinesTools::FilterParam<LinesTools::FilterType::Msg, std::string_view>("request new"),
+				LinesTools::FilterParam<LinesTools::FilterType::Params, std::string_view, LogLine::MatchType::StartsWith>(paramCheck) };
+
+		linesTools.iterateBackwards(httpLineInfo.value().firstLineIndex, filter, [&httpLineInfo](size_t, LogLine, size_t lineIndex)
+		{
+			httpLineInfo.value().firstLineIndex = lineIndex;
+			return false;
+		});
+
+		return httpLineInfo;
 	}
 }

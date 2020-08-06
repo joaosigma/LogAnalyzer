@@ -14,7 +14,7 @@ namespace la
 	class LinesTools
 	{
 	public:
-		enum class FilterType : int8_t { LogLevel, ThreadId, ThreadName, Tag, Method, Msg };
+		enum class FilterType : int8_t { LogLevel, ThreadId, ThreadName, Tag, Method, Msg, Params };
 
 		template<FilterType TFilterType, class TFilterValue, LogLine::MatchType TFilterValueMatchType = LogLine::MatchType::Exact>
 		class FilterParam;
@@ -50,7 +50,7 @@ namespace la
 		template<FilterType TFilterType, LogLine::MatchType TFilterValueMatchType>
 		class FilterParam<TFilterType, std::string_view, TFilterValueMatchType>
 		{
-			static_assert((TFilterType == FilterType::ThreadName) || (TFilterType == FilterType::Tag) || (TFilterType == FilterType::Method) || (TFilterType == FilterType::Msg));
+			static_assert((TFilterType == FilterType::ThreadName) || (TFilterType == FilterType::Tag) || (TFilterType == FilterType::Method) || (TFilterType == FilterType::Msg) || (TFilterType == FilterType::Params));
 			static_assert((TFilterValueMatchType == LogLine::MatchType::Exact) || (TFilterValueMatchType == LogLine::MatchType::StartsWith) || (TFilterValueMatchType == LogLine::MatchType::EndsWith) || (TFilterValueMatchType == LogLine::MatchType::Contains));
 
 		public:
@@ -68,6 +68,8 @@ namespace la
 					return line.checkSectionMethod<TFilterValueMatchType>(m_value);
 				else if constexpr (TFilterType == FilterType::Msg)
 					return line.checkSectionMsg<TFilterValueMatchType>(m_value);
+				else if constexpr (TFilterType == FilterType::Params)
+					return line.checkSectionParams<TFilterValueMatchType>(m_value);
 				else
 					return false;
 			}
