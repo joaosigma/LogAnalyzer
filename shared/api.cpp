@@ -154,13 +154,13 @@ laStrUTF8 la_find_ctx_query(const wclFindContext* ctx)
 	return convertStr(nCtx->query());
 }
 
-int la_find_ctx_line_position(const wclFindContext* ctx, int* lineIndex)
+int la_find_ctx_line_position(const wclFindContext* ctx, int* lineOffset)
 {
 	auto nCtx = reinterpret_cast<const la::LinesRepo::FindContext*>(ctx);
 	auto pos = nCtx->position();
 
-	if (lineIndex)
-		*lineIndex = static_cast<int>(std::get<1>(pos));
+	if (lineOffset)
+		*lineOffset = static_cast<int>(std::get<1>(pos));
 
 	return static_cast<int>(std::get<0>(pos));
 }

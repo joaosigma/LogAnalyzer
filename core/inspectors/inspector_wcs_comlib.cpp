@@ -19,7 +19,7 @@ namespace la
 				if (range.empty())
 					continue;
 
-				inspectionCtx.addExecution(lines[range.start].toStr(), range);
+				inspectionCtx.addExecution(lines[range.start].toStr(), lines[range.start].timestamp, lines[range.end - 1].timestamp, range);
 			}
 		}
 

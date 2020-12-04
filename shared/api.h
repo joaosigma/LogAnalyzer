@@ -83,7 +83,7 @@ LA_API_VISIBILITY laStrFixedUTF8 la_str_fixed_init_cstr(const char* cstr);
 
 LA_API_VISIBILITY int la_find_ctx_valid(const wclFindContext* ctx);
 LA_API_VISIBILITY laStrUTF8 la_find_ctx_query(const wclFindContext* ctx);
-LA_API_VISIBILITY int la_find_ctx_line_position(const wclFindContext* ctx, int* lineIndex);
+LA_API_VISIBILITY int la_find_ctx_line_position(const wclFindContext* ctx, int* lineOffset);
 
 
 /********

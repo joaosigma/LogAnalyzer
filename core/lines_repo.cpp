@@ -580,10 +580,12 @@ namespace la
 				jResult["warns"].push_back(std::move(jWarn));
 			}
 
-			void addExecution(std::string_view msg, LinesTools::LineIndexRange lineRange) override
+			void addExecution(std::string_view msg, int64_t timestampStart, int64_t timestampFinish, LinesTools::LineIndexRange lineRange) override
 			{
 				nlohmann::json jExec;
 				jExec["msg"] = msg;
+				jExec["timestamp"]["start"] = timestampStart;
+				jExec["timestamp"]["finish"] = timestampFinish;
 				jExec["lineRange"]["start"] = lineRange.start;
 				jExec["lineRange"]["end"] = lineRange.end;
 
