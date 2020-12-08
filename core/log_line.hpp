@@ -24,6 +24,17 @@ namespace la
 		struct {
 			const char* start;
 			const char* end;
+
+			bool empty() const noexcept
+			{
+				return (end == start);
+			}
+
+			size_t size() const noexcept
+			{
+				return (end - start);
+			}
+
 		} data;
 
 		struct {

@@ -28,12 +28,22 @@ namespace la
 			TranslatorsRepo::Format translationFormat{ TranslatorsRepo::Format::Line };
 		};
 
+		struct FindOptions
+		{
+			enum class CaseSensitivity { None, CaseSensitive };
+
+			FindOptions() = default;
+			explicit FindOptions(CaseSensitivity caseSensitivity)
+				: caseSensitivity{ caseSensitivity }
+			{ }
+
+			CaseSensitivity caseSensitivity{ CaseSensitivity::None };
+			size_t startLine{ 0 }, startLineOffset{ 0 };
+		};
+
 		class FindContext
 		{
 			friend class LinesRepo;
-
-		public:
-			enum class FindOptions { None, CaseSensitive };
 
 		public:
 			FindContext() = default;
@@ -58,14 +68,14 @@ namespace la
 			}
 
 		private:
-			FindContext(std::string query, FindOptions options, bool isRegex)
+			FindContext(std::string query, FindOptions::CaseSensitivity caseSensitivity, bool isRegex)
 				: m_isRegex{ isRegex }
 				, m_query{ std::move(query) }
-				, m_queryOptions{ options }
+				, m_caseSensitivity{ caseSensitivity }
 			{ }
 
-			FindContext(std::string query, FindOptions options, bool isRegex, LogLine line, size_t lineIndex, size_t lineOffset)
-				: FindContext{ std::move(query), options, isRegex }
+			FindContext(std::string query, FindOptions::CaseSensitivity caseSensitivity, bool isRegex, LogLine line, size_t lineIndex, size_t lineOffset)
+				: FindContext{ std::move(query), caseSensitivity, isRegex }
 			{
 				m_result.valid = true;
 				m_result.line = line;
@@ -76,7 +86,7 @@ namespace la
 		private:
 			bool m_isRegex{ false };
 			std::string m_query;
-			FindContext::FindOptions m_queryOptions;
+			FindOptions::CaseSensitivity m_caseSensitivity;
 
 			struct {
 				bool valid{ false };
@@ -109,12 +119,12 @@ namespace la
 		size_t numLines() const noexcept;
 		FlavorsRepo::Type flavor() const noexcept;
 
-		FindContext searchText(std::string_view query, FindContext::FindOptions options) const;
-		FindContext searchTextRegex(std::string_view query, FindContext::FindOptions options) const;
+		FindContext searchText(std::string_view query, FindOptions options) const;
+		FindContext searchTextRegex(std::string_view query, FindOptions options) const;
 		FindContext searchNext(FindContext ctx) const;
 
-		std::string findAll(std::string_view query, FindContext::FindOptions options) const;
-		std::string findAllRegex(std::string_view query, FindContext::FindOptions options) const;
+		std::string findAll(std::string_view query, FindOptions::CaseSensitivity caseSensitivity) const;
+		std::string findAllRegex(std::string_view query, FindOptions::CaseSensitivity caseSensitivity) const;
 
 		std::string retrieveLineContent(size_t lineIndex, TranslatorsRepo::Type type, TranslatorsRepo::Format format) const;
 

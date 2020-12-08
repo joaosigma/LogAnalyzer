@@ -544,10 +544,12 @@ int main(int argc, char* argv[])
 			}
 			else if (params.size() >= 2)
 			{
+				la::LinesRepo::FindOptions options{ la::LinesRepo::FindOptions::CaseSensitivity::None };
+
 				if ((params.size() == 3) && (params[1] == "-regex"))
-					ctx.search = repoLines->searchTextRegex(params[2], la::LinesRepo::FindContext::FindOptions::None);
+					ctx.search = repoLines->searchTextRegex(params[2], options);
 				else
-					ctx.search = repoLines->searchText(params[1], la::LinesRepo::FindContext::FindOptions::None);
+					ctx.search = repoLines->searchText(params[1], options);
 
 				if (!ctx.search.isValid())
 				{
@@ -566,12 +568,13 @@ int main(int argc, char* argv[])
 		{
 			auto timestamp = std::chrono::high_resolution_clock::now();
 
-			la::LinesRepo::FindContext result;
+			la::LinesRepo::FindOptions options{ la::LinesRepo::FindOptions::CaseSensitivity::None };
 
+			la::LinesRepo::FindContext result;
 			if ((params.size() == 3) && (params[1] == "-regex"))
-				result = repoLines->searchTextRegex(params[2], la::LinesRepo::FindContext::FindOptions::None);
+				result = repoLines->searchTextRegex(params[2], options);
 			else
-				result = repoLines->searchText(params[1], la::LinesRepo::FindContext::FindOptions::None);
+				result = repoLines->searchText(params[1], options);
 
 			size_t count{ 0 };
 			while (result.isValid())

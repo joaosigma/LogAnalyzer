@@ -162,34 +162,54 @@ namespace la
 		return m_repoFiles->flavor();
 	}
 
-	LinesRepo::FindContext LinesRepo::searchText(std::string_view query, FindContext::FindOptions options) const
+	LinesRepo::FindContext LinesRepo::searchText(std::string_view query, FindOptions options) const
 	{
-		if (query.empty())
-			return LinesRepo::FindContext{ {}, options, false };
+		if (m_lines.empty() || query.empty())
+			return LinesRepo::FindContext{ {}, options.caseSensitivity, false };
+
+		if ((options.startLine > 0) || (options.startLineOffset > 0))
+		{
+			if (options.startLine >= m_lines.size())
+				options.startLine = m_lines.size() - 1;
+
+			auto& line = m_lines[options.startLine];
+			if (options.startLineOffset >= line.data.size())
+				options.startLineOffset = line.data.empty() ? 0 : (line.data.size() - 1);
+		}
 
 		std::boyer_moore_searcher bmSearcher(query.begin(), query.end());
 
-		auto result = m_linesTools.windowSearch({ 0, m_lines.size() }, 0, [&bmSearcher](const char* dataStart, const char* dataEnd)
+		auto result = m_linesTools.windowSearch({ options.startLine, m_lines.size() }, options.startLineOffset, [&bmSearcher](const char* dataStart, const char* dataEnd)
 		{
 			return std::search(dataStart, dataEnd, bmSearcher);
 		});
 		if (!result.valid)
-			return LinesRepo::FindContext{ std::string{ query}, options, false };
+			return LinesRepo::FindContext{ std::string{ query}, options.caseSensitivity, false };
 
-		return LinesRepo::FindContext{ std::string{ query}, options, false, m_lines[result.lineIndex], result.lineIndex, result.lineOffset };
+		return LinesRepo::FindContext{ std::string{ query}, options.caseSensitivity, false, m_lines[result.lineIndex], result.lineIndex, result.lineOffset };
 	}
 
-	LinesRepo::FindContext LinesRepo::searchTextRegex(std::string_view query, FindContext::FindOptions options) const
+	LinesRepo::FindContext LinesRepo::searchTextRegex(std::string_view query, FindOptions options) const
 	{
-		if (query.empty())
-			return LinesRepo::FindContext{ {}, options, true };
+		if (m_lines.empty() || query.empty())
+			return LinesRepo::FindContext{ {}, options.caseSensitivity, true };
+
+		if ((options.startLine > 0) || (options.startLineOffset > 0))
+		{
+			if (options.startLine >= m_lines.size())
+				options.startLine = m_lines.size() - 1;
+
+			auto& line = m_lines[options.startLine];
+			if (options.startLineOffset >= line.data.size())
+				options.startLineOffset = line.data.empty() ? 0 : (line.data.size() - 1);
+		}
 
 		std::regex regQuery;
 		try
 		{
-			switch (options)
+			switch (options.caseSensitivity)
 			{
-			case FindContext::FindOptions::CaseSensitive:
+			case FindOptions::CaseSensitivity::CaseSensitive:
 				regQuery = std::regex{ std::string{ query }, std::regex::ECMAScript | std::regex::optimize };
 				break;
 			default:
@@ -200,7 +220,7 @@ namespace la
 		catch (std::regex_error exp)
 		{ }
 
-		auto result = m_linesTools.windowSearch({ 0, m_lines.size() }, 0, [&regQuery](const char* dataStart, const char* dataEnd)
+		auto result = m_linesTools.windowSearch({ options.startLine, m_lines.size() }, options.startLineOffset, [&regQuery](const char* dataStart, const char* dataEnd)
 		{
 			std::cmatch matches;
 			if (!std::regex_search(dataStart, dataEnd, matches, regQuery))
@@ -209,9 +229,9 @@ namespace la
 			return matches[0].first;
 		});
 		if (!result.valid)
-			return LinesRepo::FindContext{ std::string{ query}, options, true };
+			return LinesRepo::FindContext{ std::string{ query}, options.caseSensitivity, true };
 
-		return LinesRepo::FindContext{ std::string{ query}, options, true, m_lines[result.lineIndex], result.lineIndex, result.lineOffset };
+		return LinesRepo::FindContext{ std::string{ query}, options.caseSensitivity, true, m_lines[result.lineIndex], result.lineIndex, result.lineOffset };
 	}
 
 	LinesRepo::FindContext LinesRepo::searchNext(FindContext ctx) const
@@ -224,9 +244,9 @@ namespace la
 			std::regex regQuery;
 			try
 			{
-				switch (ctx.m_queryOptions)
+				switch (ctx.m_caseSensitivity)
 				{
-				case FindContext::FindOptions::CaseSensitive:
+				case FindOptions::CaseSensitivity::CaseSensitive:
 					regQuery = std::regex{ ctx.m_query, std::regex::ECMAScript | std::regex::optimize };
 					break;
 				default:
@@ -246,9 +266,9 @@ namespace la
 				return matches[0].first;
 			});
 			if (!result.valid)
-				return LinesRepo::FindContext{ ctx.m_query, ctx.m_queryOptions, true };
+				return LinesRepo::FindContext{ ctx.m_query, ctx.m_caseSensitivity, true };
 
-			return LinesRepo::FindContext{ ctx.m_query, ctx.m_queryOptions, true, m_lines[result.lineIndex], result.lineIndex, result.lineOffset };
+			return LinesRepo::FindContext{ ctx.m_query, ctx.m_caseSensitivity, true, m_lines[result.lineIndex], result.lineIndex, result.lineOffset };
 		}
 		else
 		{
@@ -256,17 +276,17 @@ namespace la
 
 			auto result = m_linesTools.windowSearch({ ctx.m_result.lineIndex, m_lines.size() }, ctx.m_result.lineOffset + 1, [&bmSearcher](const char* dataStart, const char* dataEnd) { return std::search(dataStart, dataEnd, bmSearcher); });
 			if (!result.valid)
-				return LinesRepo::FindContext{ ctx.m_query, ctx.m_queryOptions, false };
+				return LinesRepo::FindContext{ ctx.m_query, ctx.m_caseSensitivity, false };
 
-			return LinesRepo::FindContext{ ctx.m_query, ctx.m_queryOptions, false, m_lines[result.lineIndex], result.lineIndex, result.lineOffset };
+			return LinesRepo::FindContext{ ctx.m_query, ctx.m_caseSensitivity, false, m_lines[result.lineIndex], result.lineIndex, result.lineOffset };
 		}
 	}
 
-	std::string LinesRepo::findAll(std::string_view query, FindContext::FindOptions options) const
+	std::string LinesRepo::findAll(std::string_view query, FindOptions::CaseSensitivity caseSensitivity) const
 	{
 		std::unordered_map<size_t, std::vector<size_t>> curLineMatches;
 		{
-			auto ctx = searchText(query, options);
+			auto ctx = searchText(query, FindOptions{ caseSensitivity });
 			while (ctx.isValid())
 			{
 				curLineMatches[std::get<0>(ctx.position())].push_back(std::get<1>(ctx.position()));
@@ -287,11 +307,11 @@ namespace la
 		return jLines.dump();
 	}
 
-	std::string LinesRepo::findAllRegex(std::string_view query, FindContext::FindOptions options) const
+	std::string LinesRepo::findAllRegex(std::string_view query, FindOptions::CaseSensitivity caseSensitivity) const
 	{
 		std::unordered_map<size_t, std::vector<size_t>> curLineMatches;
 		{
-			auto ctx = searchTextRegex(query, options);
+			auto ctx = searchTextRegex(query, FindOptions{ caseSensitivity });
 			while (ctx.isValid())
 			{
 				curLineMatches[std::get<0>(ctx.position())].push_back(std::get<1>(ctx.position()));
