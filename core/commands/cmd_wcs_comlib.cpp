@@ -554,6 +554,36 @@ namespace la
 				}
 			}
 		}
+
+		void cmdPJSIPThreads(CommandsRepo::IResultCtx& resultCtx, const LinesTools& linesTools)
+		{
+			LinesTools::FilterCollection filter{
+					LinesTools::FilterParam<LinesTools::FilterType::Tag, std::string_view>("COMLib.PJSIP"),
+					LinesTools::FilterParam<LinesTools::FilterType::Method, std::string_view, LogLine::MatchType::Exact>("operator()") };
+
+			std::set<int32_t> threadIds;
+			linesTools.iterateForward(0, filter, [&threadIds](size_t, LogLine line, size_t)
+			{
+				threadIds.insert(line.threadId);
+				return true;
+			});
+
+			if (threadIds.empty())
+				return;
+
+			auto& lines = linesTools.lines();
+
+			std::vector<size_t> lineIndices;
+			for (size_t lineIndex = 0; lineIndex < lines.size(); lineIndex++)
+			{
+				if (threadIds.count(lines[lineIndex].threadId) <= 0)
+					continue;
+
+				lineIndices.push_back(lineIndex);
+			}
+
+			resultCtx.addLineIndices(lineIndices);
+		}
 	}
 
 	CommandsRepo::Registry CommandsCOMLib::genCommandsRegistry()
@@ -581,6 +611,9 @@ namespace la
 
 			registerCtx.registerCommand({ "SIP flows", "Return all log lines with SIP content", "optional SIP method name filter", true,
 				[](CommandsRepo::IResultCtx& resultCtx, const LinesTools& linesTools, std::string_view cmdParams) { return cmdSIPFlows(resultCtx, linesTools, cmdParams); } });
+
+			registerCtx.registerCommand({ "PJSIP threads", "Gather all pjsip threads", {}, false,
+				[](CommandsRepo::IResultCtx& resultCtx, const LinesTools& linesTools, std::string_view cmdParams) { return cmdPJSIPThreads(resultCtx, linesTools); } });
 		};
 
 		return registry;
