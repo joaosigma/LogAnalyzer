@@ -39,11 +39,6 @@ typedef enum {
 	LA_TRANSLATOR_FORMAT_JSON_SINGLE_PARAMS
 } laTranslatorFormat;
 
-typedef enum {
-	LA_SEARCH_OPTION_NONE,
-	LA_SEARCH_OPTION_CASE_SENSITIVE
-} laSearchOptions;
-
 typedef struct
 {
 	char* data;
@@ -55,6 +50,17 @@ typedef struct
 	const char* data;
 	int size;
 } laStrFixedUTF8;
+
+typedef struct
+{
+	typedef enum {
+		LA_CASE_SENSITIVE_NONE,
+		LA_CASE_SENSITIVE
+	} laCaseSensitivity;
+
+	laCaseSensitivity caseSensitivity;
+	int startLine, startLineOffset;
+} laFindOptions;
 
 typedef struct
 {
@@ -110,13 +116,13 @@ LA_API_VISIBILITY int la_repo_num_files(wclLinesRepo* repo);
 LA_API_VISIBILITY int la_repo_num_lines(wclLinesRepo* repo);
 LA_API_VISIBILITY laFlavorType la_repo_flavor(wclLinesRepo* repo);
 
-LA_API_VISIBILITY wclFindContext* la_repo_search_text(wclLinesRepo* repo, laStrFixedUTF8 query, laSearchOptions searchOptions);
-LA_API_VISIBILITY wclFindContext* la_repo_search_text_regex(wclLinesRepo* repo, laStrFixedUTF8 query, laSearchOptions searchOptions);
+LA_API_VISIBILITY wclFindContext* la_repo_search_text(wclLinesRepo* repo, laStrFixedUTF8 query, const laFindOptions* findOptions);
+LA_API_VISIBILITY wclFindContext* la_repo_search_text_regex(wclLinesRepo* repo, laStrFixedUTF8 query, const laFindOptions* findOptions);
 LA_API_VISIBILITY void la_repo_search_next(wclLinesRepo* repo, wclFindContext* ctx);
 LA_API_VISIBILITY void la_repo_search_destroy(wclFindContext* ctx);
 
-LA_API_VISIBILITY laStrUTF8 la_repo_find_all(wclLinesRepo* repo, laStrFixedUTF8 query, laSearchOptions searchOptions);
-LA_API_VISIBILITY laStrUTF8 la_repo_find_all_regex(wclLinesRepo* repo, laStrFixedUTF8 query, laSearchOptions searchOptions);
+LA_API_VISIBILITY laStrUTF8 la_repo_find_all(wclLinesRepo* repo, laStrFixedUTF8 query, laFindOptions::laCaseSensitivity caseSensitivity);
+LA_API_VISIBILITY laStrUTF8 la_repo_find_all_regex(wclLinesRepo* repo, laStrFixedUTF8 query, laFindOptions::laCaseSensitivity caseSensitivity);
 
 LA_API_VISIBILITY laStrUTF8 la_repo_retrieve_line_content(wclLinesRepo* repo, int lineIndex, laTranslatorType translatorType, laTranslatorFormat translatorFormat);
 
