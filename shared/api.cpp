@@ -15,16 +15,29 @@ namespace
 		return newStr;
 	}
 
-	la::LinesRepo::FindContext::FindOptions convertSearchOptions(const laSearchOptions options)
+	la::LinesRepo::FindOptions::CaseSensitivity convertCaseSensitivity(const laFindOptions::laCaseSensitivity caseSensitivity)
 	{
-		switch (options)
+		switch (caseSensitivity)
 		{
-		case LA_SEARCH_OPTION_CASE_SENSITIVE:
-			return la::LinesRepo::FindContext::FindOptions::CaseSensitive;
-		case LA_SEARCH_OPTION_NONE:
+		case laFindOptions::LA_CASE_SENSITIVE:
+			return la::LinesRepo::FindOptions::CaseSensitivity::CaseSensitive;
+		case laFindOptions::LA_CASE_SENSITIVE_NONE:
 		default:
-			return la::LinesRepo::FindContext::FindOptions::None;
+			return la::LinesRepo::FindOptions::CaseSensitivity::None;
 		}
+	}
+
+	la::LinesRepo::FindOptions convertFindOptions(const laFindOptions* findOptions)
+	{
+		if (!findOptions)
+			return {};
+
+		la::LinesRepo::FindOptions nOptions;
+		nOptions.caseSensitivity = convertCaseSensitivity(findOptions->caseSensitivity);
+		nOptions.startLine = static_cast<size_t>(findOptions->startLine);
+		nOptions.startLineOffset = static_cast<size_t>(findOptions->startLineOffset);
+
+		return nOptions;
 	}
 
 	la::LinesRepo::ExportOptions convertExportOptions(const laExportOptions* options)
@@ -286,23 +299,23 @@ laFlavorType la_repo_flavor(wclLinesRepo* repo)
 	return static_cast<laFlavorType>(reinterpret_cast<la::LinesRepo*>(repo)->flavor());
 }
 
-wclFindContext* la_repo_search_text(wclLinesRepo* repo, laStrFixedUTF8 query, laSearchOptions searchOptions)
+wclFindContext* la_repo_search_text(wclLinesRepo* repo, laStrFixedUTF8 query, const laFindOptions* findOptions)
 {
 	if (!repo)
 		return nullptr;
 
-	auto fctx = reinterpret_cast<la::LinesRepo*>(repo)->searchText({ query.data, static_cast<size_t>(query.size) }, convertSearchOptions(searchOptions));
+	auto fctx = reinterpret_cast<la::LinesRepo*>(repo)->searchText({ query.data, static_cast<size_t>(query.size) }, convertFindOptions(findOptions));
 
 	auto wrapper = new la::LinesRepo::FindContext(std::move(fctx));
 	return (wrapper ? reinterpret_cast<wclFindContext*>(wrapper) : nullptr);
 }
 
-wclFindContext* la_repo_search_text_regex(wclLinesRepo* repo, laStrFixedUTF8 query, laSearchOptions searchOptions)
+wclFindContext* la_repo_search_text_regex(wclLinesRepo* repo, laStrFixedUTF8 query, const laFindOptions* findOptions)
 {
 	if (!repo)
 		return nullptr;
 
-	auto fctx = reinterpret_cast<la::LinesRepo*>(repo)->searchTextRegex({ query.data, static_cast<size_t>(query.size) }, convertSearchOptions(searchOptions));
+	auto fctx = reinterpret_cast<la::LinesRepo*>(repo)->searchTextRegex({ query.data, static_cast<size_t>(query.size) }, convertFindOptions(findOptions));
 
 	auto wrapper = new la::LinesRepo::FindContext(std::move(fctx));
 	return (wrapper ? reinterpret_cast<wclFindContext*>(wrapper) : nullptr);
@@ -325,21 +338,21 @@ void la_repo_search_destroy(wclFindContext* ctx)
 	delete reinterpret_cast<la::LinesRepo::FindContext*>(ctx);
 }
 
-laStrUTF8 la_repo_find_all(wclLinesRepo* repo, laStrFixedUTF8 query, laSearchOptions searchOptions)
+laStrUTF8 la_repo_find_all(wclLinesRepo* repo, laStrFixedUTF8 query, laFindOptions::laCaseSensitivity caseSensitivity)
 {
 	if (!repo)
 		return la_str_init();
 
-	auto res = reinterpret_cast<la::LinesRepo*>(repo)->findAll({ query.data, static_cast<size_t>(query.size) }, convertSearchOptions(searchOptions));
+	auto res = reinterpret_cast<la::LinesRepo*>(repo)->findAll({ query.data, static_cast<size_t>(query.size) }, convertCaseSensitivity(caseSensitivity));
 	return convertStr(res);
 }
 
-laStrUTF8 la_repo_find_all_regex(wclLinesRepo* repo, laStrFixedUTF8 query, laSearchOptions searchOptions)
+laStrUTF8 la_repo_find_all_regex(wclLinesRepo* repo, laStrFixedUTF8 query, laFindOptions::laCaseSensitivity caseSensitivity)
 {
 	if (!repo)
 		return la_str_init();
 
-	auto res = reinterpret_cast<la::LinesRepo*>(repo)->findAllRegex({ query.data, static_cast<size_t>(query.size) }, convertSearchOptions(searchOptions));
+	auto res = reinterpret_cast<la::LinesRepo*>(repo)->findAllRegex({ query.data, static_cast<size_t>(query.size) }, convertCaseSensitivity(caseSensitivity));
 	return convertStr(res);
 }
 

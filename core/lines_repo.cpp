@@ -177,12 +177,31 @@ namespace la
 				options.startLineOffset = line.data.empty() ? 0 : (line.data.size() - 1);
 		}
 
-		std::boyer_moore_searcher bmSearcher(query.begin(), query.end());
+		LinesTools::SearchResult result;
 
-		auto result = m_linesTools.windowSearch({ options.startLine, m_lines.size() }, options.startLineOffset, [&bmSearcher](const char* dataStart, const char* dataEnd)
+		if (options.caseSensitivity == FindOptions::CaseSensitivity::CaseSensitive)
 		{
-			return std::search(dataStart, dataEnd, bmSearcher);
-		});
+			std::boyer_moore_searcher bmSearcher{ query.begin(), query.end() };
+
+			result = m_linesTools.windowSearch({ options.startLine, m_lines.size() }, options.startLineOffset, [&bmSearcher](const char* dataStart, const char* dataEnd)
+			{
+				return std::search(dataStart, dataEnd, bmSearcher);
+			});
+		}
+		else
+		{
+			auto bmHash = std::hash<typename std::iterator_traits<std::string_view::iterator>::value_type>();
+			std::boyer_moore_searcher bmSearcher{ query.begin(), query.end(), bmHash, [](const std::iterator_traits<std::string_view::iterator>::value_type& lhs, const std::iterator_traits<std::string_view::iterator>::value_type& rhs)
+			{
+				return (std::tolower(static_cast<unsigned char>(lhs)) == std::tolower(static_cast<unsigned char>(rhs)));
+			} };
+
+			result = m_linesTools.windowSearch({ options.startLine, m_lines.size() }, options.startLineOffset, [&bmSearcher](const char* dataStart, const char* dataEnd)
+			{
+				return std::search(dataStart, dataEnd, bmSearcher);
+			});
+		}
+
 		if (!result.valid)
 			return LinesRepo::FindContext{ std::string{ query}, options.caseSensitivity, false };
 
@@ -272,9 +291,25 @@ namespace la
 		}
 		else
 		{
-			std::boyer_moore_searcher bmSearcher(ctx.m_query.begin(), ctx.m_query.end());
+			LinesTools::SearchResult result;
 
-			auto result = m_linesTools.windowSearch({ ctx.m_result.lineIndex, m_lines.size() }, ctx.m_result.lineOffset + 1, [&bmSearcher](const char* dataStart, const char* dataEnd) { return std::search(dataStart, dataEnd, bmSearcher); });
+			if (ctx.m_caseSensitivity == FindOptions::CaseSensitivity::CaseSensitive)
+			{
+				std::boyer_moore_searcher bmSearcher(ctx.m_query.begin(), ctx.m_query.end());
+
+				result = m_linesTools.windowSearch({ ctx.m_result.lineIndex, m_lines.size() }, ctx.m_result.lineOffset + 1, [&bmSearcher](const char* dataStart, const char* dataEnd) { return std::search(dataStart, dataEnd, bmSearcher); });
+			}
+			else
+			{
+				auto bmHash = std::hash<typename std::iterator_traits<std::string::iterator>::value_type>();
+				std::boyer_moore_searcher bmSearcher{ ctx.m_query.begin(), ctx.m_query.end(), bmHash, [](const std::iterator_traits<std::string::iterator>::value_type& lhs, const std::iterator_traits<std::string::iterator>::value_type& rhs)
+				{
+					return (std::tolower(static_cast<unsigned char>(lhs)) == std::tolower(static_cast<unsigned char>(rhs)));
+				} };
+
+				result = m_linesTools.windowSearch({ ctx.m_result.lineIndex, m_lines.size() }, ctx.m_result.lineOffset + 1, [&bmSearcher](const char* dataStart, const char* dataEnd) { return std::search(dataStart, dataEnd, bmSearcher); });
+			}
+
 			if (!result.valid)
 				return LinesRepo::FindContext{ ctx.m_query, ctx.m_caseSensitivity, false };
 
