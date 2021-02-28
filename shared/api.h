@@ -21,48 +21,48 @@ extern "C" {
 
 #include <stdint.h>
 
-typedef enum {
+typedef enum laFlavorType {
 	LA_FLAVOR_TYPE_UNKNOWN,
 	LA_FLAVOR_TYPE_WCSCOMLIB,
 	LA_FLAVOR_TYPE_WCSSERVER,
 	LA_FLAVOR_TYPE_WCSANDROIDLOGCAT
 } laFlavorType;
 
-typedef enum {
+typedef enum laTranslatorType {
 	LA_TRANSLATOR_TYPE_RAW,
 	LA_TRANSLATOR_TYPE_TRANSLATED
 } laTranslatorType;
 
-typedef enum {
+typedef enum laTranslatorFormat {
 	LA_TRANSLATOR_FORMAT_LINE,
 	LA_TRANSLATOR_FORMAT_JSON_FULL,
 	LA_TRANSLATOR_FORMAT_JSON_SINGLE_PARAMS
 } laTranslatorFormat;
 
-typedef struct
+typedef struct laStrUTF8
 {
 	char* data;
 	int size;
 } laStrUTF8;
 
-typedef struct
+typedef struct laStrFixedUTF8
 {
 	const char* data;
 	int size;
 } laStrFixedUTF8;
 
-typedef struct
-{
-	typedef enum {
-		LA_CASE_SENSITIVE_NONE,
-		LA_CASE_SENSITIVE
-	} laCaseSensitivity;
+typedef enum laFindOptionsCaseSensitivity {
+	LA_FIND_OPTIONS_CASE_SENSITIVE_NONE,
+	LA_FIND_OPTIONS_CASE_SENSITIVE
+} laFindOptionsCaseSensitivity;
 
-	laCaseSensitivity caseSensitivity;
+typedef struct laFindOptions
+{
+	laFindOptionsCaseSensitivity caseSensitivity;
 	int startLine, startLineOffset;
 } laFindOptions;
 
-typedef struct
+typedef struct laExportOptions
 {
 	int8_t appendToFile;
 	laStrFixedUTF8 filePath;
@@ -121,8 +121,8 @@ LA_API_VISIBILITY wclFindContext* la_repo_search_text_regex(wclLinesRepo* repo, 
 LA_API_VISIBILITY void la_repo_search_next(wclLinesRepo* repo, wclFindContext* ctx);
 LA_API_VISIBILITY void la_repo_search_destroy(wclFindContext* ctx);
 
-LA_API_VISIBILITY laStrUTF8 la_repo_find_all(wclLinesRepo* repo, laStrFixedUTF8 query, laFindOptions::laCaseSensitivity caseSensitivity);
-LA_API_VISIBILITY laStrUTF8 la_repo_find_all_regex(wclLinesRepo* repo, laStrFixedUTF8 query, laFindOptions::laCaseSensitivity caseSensitivity);
+LA_API_VISIBILITY laStrUTF8 la_repo_find_all(wclLinesRepo* repo, laStrFixedUTF8 query, laFindOptionsCaseSensitivity caseSensitivity);
+LA_API_VISIBILITY laStrUTF8 la_repo_find_all_regex(wclLinesRepo* repo, laStrFixedUTF8 query, laFindOptionsCaseSensitivity caseSensitivity);
 
 LA_API_VISIBILITY laStrUTF8 la_repo_retrieve_line_content(wclLinesRepo* repo, int lineIndex, laTranslatorType translatorType, laTranslatorFormat translatorFormat);
 
