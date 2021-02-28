@@ -15,13 +15,13 @@ namespace
 		return newStr;
 	}
 
-	la::LinesRepo::FindOptions::CaseSensitivity convertCaseSensitivity(const laFindOptions::laCaseSensitivity caseSensitivity)
+	la::LinesRepo::FindOptions::CaseSensitivity convertCaseSensitivity(const laFindOptionsCaseSensitivity caseSensitivity)
 	{
 		switch (caseSensitivity)
 		{
-		case laFindOptions::LA_CASE_SENSITIVE:
+		case LA_FIND_OPTIONS_CASE_SENSITIVE:
 			return la::LinesRepo::FindOptions::CaseSensitivity::CaseSensitive;
-		case laFindOptions::LA_CASE_SENSITIVE_NONE:
+		case LA_FIND_OPTIONS_CASE_SENSITIVE_NONE:
 		default:
 			return la::LinesRepo::FindOptions::CaseSensitivity::None;
 		}
@@ -338,7 +338,7 @@ void la_repo_search_destroy(wclFindContext* ctx)
 	delete reinterpret_cast<la::LinesRepo::FindContext*>(ctx);
 }
 
-laStrUTF8 la_repo_find_all(wclLinesRepo* repo, laStrFixedUTF8 query, laFindOptions::laCaseSensitivity caseSensitivity)
+laStrUTF8 la_repo_find_all(wclLinesRepo* repo, laStrFixedUTF8 query, laFindOptionsCaseSensitivity caseSensitivity)
 {
 	if (!repo)
 		return la_str_init();
@@ -347,7 +347,7 @@ laStrUTF8 la_repo_find_all(wclLinesRepo* repo, laStrFixedUTF8 query, laFindOptio
 	return convertStr(res);
 }
 
-laStrUTF8 la_repo_find_all_regex(wclLinesRepo* repo, laStrFixedUTF8 query, laFindOptions::laCaseSensitivity caseSensitivity)
+laStrUTF8 la_repo_find_all_regex(wclLinesRepo* repo, laStrFixedUTF8 query, laFindOptionsCaseSensitivity caseSensitivity)
 {
 	if (!repo)
 		return la_str_init();
